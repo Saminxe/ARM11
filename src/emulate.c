@@ -5,11 +5,31 @@
 #define PC 15 //program counter
 #define CPSR 16 //flags register
 
-//void loadInto(int *memory, )
+/*** Debugging tools ***/
+void printMemoryComposition(unsigned char *memory, int size)
+{
+    for (int i = 0; i < size; i++)
+      printf("Memory at %d = %2x\n", i, memory[i]);
+}
 
-int main(int argc, char **argv) {
-  char *memory;
-  long *registers;
+void printRegisterComposition(unsigned long *registers)
+{
+  for (int i = 0; i < 13; i++)
+    printf("E%d: %lx\n", i, registers[i]);
+  printf("ESP: %lx\n", registers[SP]);
+  printf("ELR: %lx\n", registers[LR]);
+  printf("EPC: %lx\n", registers[PC]);
+  printf("CPSR: %lx\n", registers[CPSR]);
+}
+
+
+
+/* End of debugging tools */
+
+int main(int argc, char **argv)
+{
+  unsigned char *memory;
+  unsigned long *registers;
   FILE *proc;
   int procSize;
 
@@ -18,8 +38,8 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  memory = (char *) calloc(65536, sizeof(char));
-  registers = (long *) calloc(17, sizeof(long));
+  memory = (unsigned char *) calloc(65536, sizeof(char));
+  registers = (unsigned long *) calloc(17, sizeof(long));
   proc = fopen(argv[1], "rb");
 
   if (proc == NULL) {
@@ -30,11 +50,10 @@ int main(int argc, char **argv) {
   fseek(proc, 0, SEEK_END);
   procSize = ftell(proc);
   fseek(proc, 0, SEEK_SET);
-  fread(memory, 1, procSize, proc);
+  fread(memory, sizeof(char), procSize, proc);
 
-  for (int i = 0; i < procSize; i++) {
-    printf("Memory at %d = %x\n", i, memory[i]);
-  }
+  //printMemoryComposition(memory, procSize);
+  //printRegisterComposition(registers);
 
   free(memory);
   free(registers);
