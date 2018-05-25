@@ -70,7 +70,7 @@ void branchDataTransfer(uint8_t *memory, uint32_t *registers, uint32_t instr)
 }
 
 int checkCond(char cond, uint32_t *registers) {
-   uint8_t cpsr = *((uint8_t *) (registers + CPSR)); //is broken af
+   uint8_t cpsr = *(registers + CPSR) >> 28;
    char N = 0x8;
    char Z = 0x4;
    //char C = 0x2;
