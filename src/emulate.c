@@ -1,12 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <assert.h>
-
-#define SP 13 //shared pointer
-#define LR 14 //link register
-#define PC 15 //program counter
-#define CPSR 16 //flags register
+#include "emulate.h"
 
 /*
 ██████╗ ██╗   ██╗████████╗███████╗     ██████╗ ██████╗ ██████╗ ███████╗██████╗     ██╗███████╗    ██╗     ██╗████████╗████████╗██╗     ███████╗    ███████╗███╗   ██╗██████╗ ██╗ █████╗ ███╗   ██╗
@@ -17,6 +9,35 @@
 ╚═════╝    ╚═╝      ╚═╝   ╚══════╝     ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝    ╚═╝╚══════╝    ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚══════╝╚══════╝    ╚══════╝╚═╝  ╚═══╝╚═════╝ ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
 */
 
+/*** Debugging tools ***/
+void printMemoryComposition(uint8_t *memory, int size)
+{
+    for (int i = 0; i < size; i++)
+      printf("Memory at %d = %02x\n", i, memory[i]);
+}
+
+void printRegisterComposition(uint32_t *registers)
+{
+  for (int i = 0; i < 13; i++)
+    printf("E%02d: %08x\n", i, registers[i]);
+  printf("ESP: %08x\n", registers[SP]);
+  printf("ELR: %08x\n", registers[LR]);
+  printf("EPC: %08x\n", registers[PC]);
+  printf("CPSR: %08x\n", registers[CPSR]);
+}
+
+void condChecks(uint32_t *registers, uint32_t cpsrState)
+{
+  *(registers + CPSR) = cpsrState;
+  printf("CPSR: %x\n", cpsrState);
+  printf("Code 0000 returns %d\n", checkCond(0x0, registers));
+  printf("Code 0001 returns %d\n", checkCond(0x1, registers));
+  printf("Code 1010 returns %d\n", checkCond(0xA, registers));
+  printf("Code 1011 returns %d\n", checkCond(0xB, registers));
+  printf("Code 1100 returns %d\n", checkCond(0xC, registers));
+  printf("Code 1101 returns %d\n", checkCond(0xD, registers));
+  printf("Code 1110 returns %d\n\n", checkCond(0xE, registers));
+}
 /*** End of debugging tools ***/
 
 /*** Generic pattern matcher ***/
@@ -71,7 +92,8 @@ int getInstrBit(uint32_t instr, int position) {
   return !((instr & mask) == 0);
 }
 
-void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr) {
+void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr)
+{
   if (!checkInstrCond(registers, instr)) { return; }
 
 
@@ -121,35 +143,6 @@ void process(uint8_t *memory, uint32_t *registers)
   else if (patternMatcher(instr, BRANCH_PATTERN, BRANCH_MASK))
     branchDataTransfer(memory, registers, instr);
   else printf("not a valid instruction u schmuck\n");
-}
-
-/*** Debugging tools ***/
-void printMemoryComposition(uint8_t *memory, int size)
-{
-    for (int i = 0; i < size; i++)
-      printf("Memory at %d = %02x\n", i, memory[i]);
-}
-
-void printRegisterComposition(uint32_t *registers)
-{
-  for (int i = 0; i < 13; i++)
-    printf("E%02d: %08x\n", i, registers[i]);
-  printf("ESP: %08x\n", registers[SP]);
-  printf("ELR: %08x\n", registers[LR]);
-  printf("EPC: %08x\n", registers[PC]);
-  printf("CPSR: %08x\n", registers[CPSR]);
-}
-
-void condChecks(uint32_t *registers, uint32_t cpsrState) {
-  *(registers + CPSR) = cpsrState;
-  printf("CPSR: %x\n", cpsrState);
-  printf("Code 0000 returns %d\n", checkCond(0x0, registers));
-  printf("Code 0001 returns %d\n", checkCond(0x1, registers));
-  printf("Code 1010 returns %d\n", checkCond(0xA, registers));
-  printf("Code 1011 returns %d\n", checkCond(0xB, registers));
-  printf("Code 1100 returns %d\n", checkCond(0xC, registers));
-  printf("Code 1101 returns %d\n", checkCond(0xD, registers));
-  printf("Code 1110 returns %d\n\n", checkCond(0xE, registers));
 }
 
 int main(int argc, char **argv)
