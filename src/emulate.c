@@ -53,13 +53,9 @@ int patternMatcher(uint32_t instr, uint32_t pattern, uint32_t mask)
 
 /* Check CSPR registers against a given condition code.
  * Return 1 if condition is met, 0 if it is not.*/
-int checkCond(uint8_t cond, uint32_t *registers) {
+int checkCond(uint8_t cond, uint32_t *registers)
+{
   uint8_t cpsr = *(registers + CPSR) >> 28;
-  uint8_t N = 0x8;
-  uint8_t Z = 0x4;
-  //uint8_t C = 0x2;
-  uint8_t V = 0x1;
-
   switch (cond) {
     case (0x0): return (cpsr & Z) == 0x4;
     case (0x1): return (cpsr & Z) == 0x0;
@@ -71,6 +67,27 @@ int checkCond(uint8_t cond, uint32_t *registers) {
     default: printf("ERROR: Condition code %c is not acceptable\n", cond);
   }
   return -1;
+}
+
+/* Sets/unsets the desired flag in CPSR.
+  1 = Set, 0 = Unset. */
+void setUnset(int flag, int set, uint32_t *registers)
+{
+  if (set) {
+    switch (flag) {
+      case (V): registers[CPSR] |= 0x10000000; break;
+      case (C): registers[CPSR] |= 0x20000000; break;
+      case (Z): registers[CPSR] |= 0x40000000; break;
+      case (N): registers[CPSR] |= 0x80000000; break;
+    }
+  } else {
+    switch (flag) {
+      case (V): registers[CPSR] &= 0xEFFFFFFF; break;
+      case (C): registers[CPSR] &= 0xDFFFFFFF; break;
+      case (Z): registers[CPSR] &= 0xBFFFFFFF; break;
+      case (N): registers[CPSR] &= 0x7FFFFFFF; break;
+    }
+  }
 }
 
 
@@ -101,7 +118,21 @@ void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr)
 
 void multiply(uint8_t *memory, uint32_t *registers, uint32_t instr)
 {
-  printf("This is a multiply instruction\n");
+  int acc = (instr & 0x00200000) >> 21;
+  int set = (instr & 0x00100000) >> 20;
+  uint8_t rd = (instr & 0x000F0000) >> 16;
+  uint8_t rn = (instr & 0x0000F000) >> 12;
+  uint8_t rs = (instr & 0x00000F00) >> 8;
+  uint8_t rm = (instr & 0x0000000F);
+  //printf("This is a multiply instruction\n");
+  if (!checkInstrCond(registers, instr)) return;
+  registers[rd] = registers[rm] * registers[rs];
+  if (acc)
+    registers[rd] += registers[rn];
+  if (set) {
+    setUnset(N, registers[rd] >> 31, registers);
+    setUnset(Z, registers[rd] == 0, registers);
+  }
 }
 
 void singleDataTransfer(uint8_t *memory, uint32_t *registers, uint32_t instr)
@@ -128,21 +159,24 @@ void process(uint8_t *memory, uint32_t *registers)
   const uint32_t SDT_MASK = 0x0C060000;
   const uint32_t BRANCH_PATTERN = 0x0A000000;
   const uint32_t BRANCH_MASK = 0x0F000000;
-  uint32_t pc = *(registers + PC);
-  uint32_t instr = memory[pc] |
-    memory[pc + 1] << 8 |
-    memory[pc + 2] << 16 |
-    memory[pc + 3] << 24;
-  printf("%x\n", instr);
-  if (patternMatcher(instr, MULTIPLY_PATTERN, MULTIPLY_MASK))
-    multiply(memory, registers, instr);
-  else if (patternMatcher(instr, DATA_PROCESS_PATTERN, DATA_PROCESS_MASK))
-    dataProcess(memory, registers, instr);
-  else if (patternMatcher(instr, SDT_PATTERN, SDT_MASK))
-    singleDataTransfer(memory, registers, instr);
-  else if (patternMatcher(instr, BRANCH_PATTERN, BRANCH_MASK))
-    branchDataTransfer(memory, registers, instr);
-  else printf("not a valid instruction u schmuck\n");
+  do {
+    uint32_t instr = memory[*(registers + PC)] |
+      memory[*(registers + PC) + 1] << 8 |
+      memory[*(registers + PC) + 2] << 16 |
+      memory[*(registers + PC) + 3] << 24;
+    //printf("%x\n", instr);
+    *(registers + PC) += 4;
+    if (instr == 0) break;
+    else if (patternMatcher(instr, MULTIPLY_PATTERN, MULTIPLY_MASK))
+      multiply(memory, registers, instr);
+    else if (patternMatcher(instr, DATA_PROCESS_PATTERN, DATA_PROCESS_MASK))
+      dataProcess(memory, registers, instr);
+    else if (patternMatcher(instr, SDT_PATTERN, SDT_MASK))
+      singleDataTransfer(memory, registers, instr);
+    else if (patternMatcher(instr, BRANCH_PATTERN, BRANCH_MASK))
+      branchDataTransfer(memory, registers, instr);
+    else printf("not a valid instruction u schmuck\n");
+  } while (*(registers + PC) < 65536);
 }
 
 int main(int argc, char **argv)
@@ -171,8 +205,13 @@ int main(int argc, char **argv)
   fseek(proc, 0, SEEK_SET);
   fread(memory, sizeof(char), procSize, proc);
 
+  /* Register tests
+  registers[0] = 4;
+  registers[1] = 5;
+  registers[2] = 0xffff0000;
+  */
+  
   process(memory, registers);
-  *(registers + CPSR) = 0xF0000000;
 
   /* Debugging */
   //printMemoryComposition(memory, procSize);
