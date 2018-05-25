@@ -65,6 +65,27 @@ void singleDataTransfer(unsigned char *memory, unsigned long *registers, unsigne
 void branchDataTransfer(unsigned char *memory, unsigned long *registers, unsigned long instr)
 {
   printf("This is a branch instruction\n");
+  instr = calloc(32, sizeof(long));
+  unsigned char cond = instr >> 28;
+}
+
+int checkCond(char cond, unsigned long *registers) {
+   unsigned char cpsr = *((char *) (registers + CPSR));
+   char N = 0x8;
+   char Z = 0x4;
+   char C = 0x2;
+   char V = 0x1;
+   
+   switch (cond) {
+      case (0x0): return cpsr & Z;
+      case (0x1): return (cpsr & Z) != 0x0;
+      case (0xA): return (cpsr & N) >> 3 == (cpsr & V);
+      case (0xB): return (cpsr & N) >> 3 != (cpsr & V);
+      case (0xC): return ((cpsr & N) >> 3 == (cpsr & V)) && ((cpsr & Z) == 0x1);
+      case (0xD): return ((cpsr & Z) == 0x1) || ((cpsr & N) >> 3 != (cpsr & V));
+      case (0xE): return 1;
+      default: printf("ERROR: Condition code %c is not accpetable\n", cond);
+   }
 }
 
 /*** Pipeline ***/
