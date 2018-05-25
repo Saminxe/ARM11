@@ -65,17 +65,17 @@ void singleDataTransfer(unsigned char *memory, unsigned long *registers, unsigne
 void branchDataTransfer(unsigned char *memory, unsigned long *registers, unsigned long instr)
 {
   printf("This is a branch instruction\n");
-  instr = calloc(32, sizeof(long));
-  unsigned char cond = instr >> 28;
+  /*instr = calloc(32, sizeof(long));
+  unsigned char cond = instr >> 28;*/
 }
 
 int checkCond(char cond, unsigned long *registers) {
-   unsigned char cpsr = *((char *) (registers + CPSR));
+   unsigned char cpsr = *((char *) (registers + CPSR)); //is broken af
    char N = 0x8;
    char Z = 0x4;
-   char C = 0x2;
+   //char C = 0x2;
    char V = 0x1;
-   
+
    switch (cond) {
       case (0x0): return cpsr & Z;
       case (0x1): return (cpsr & Z) != 0x0;
@@ -86,6 +86,7 @@ int checkCond(char cond, unsigned long *registers) {
       case (0xE): return 1;
       default: printf("ERROR: Condition code %c is not accpetable\n", cond);
    }
+   return -1;
 }
 
 /*** Pipeline ***/
@@ -143,9 +144,12 @@ int main(int argc, char **argv)
   fread(memory, sizeof(char), procSize, proc);
 
   process(memory, registers);
+  *(registers + CPSR) = 0xF0000000;
 
   printMemoryComposition(memory, procSize);
   printRegisterComposition(registers);
+
+  printf("%d\n", checkCond(0,registers));
 
   free(memory);
   free(registers);
