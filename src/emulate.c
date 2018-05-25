@@ -15,25 +15,6 @@
 ╚═════╝    ╚═╝      ╚═╝   ╚══════╝     ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝    ╚═╝╚══════╝    ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚══════╝╚══════╝    ╚══════╝╚═╝  ╚═══╝╚═════╝ ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
 */
 
-
-
-/*** Debugging tools ***/
-void printMemoryComposition(uint8_t *memory, int size)
-{
-    for (int i = 0; i < size; i++)
-      printf("Memory at %d = %02x\n", i, memory[i]);
-}
-
-void printRegisterComposition(uint32_t *registers)
-{
-  for (int i = 0; i < 13; i++)
-    printf("E%02d: %08x\n", i, registers[i]);
-  printf("ESP: %08x\n", registers[SP]);
-  printf("ELR: %08x\n", registers[LR]);
-  printf("EPC: %08x\n", registers[PC]);
-  printf("CPSR: %08x\n", registers[CPSR]);
-}
-
 /*** End of debugging tools ***/
 
 /*** Generic pattern matcher ***/
@@ -54,12 +35,12 @@ int checkCond(uint8_t cond, uint32_t *registers) {
   uint8_t V = 0x1;
 
   switch (cond) {
-    case (0x0): return cpsr & Z;
-    case (0x1): return (cpsr & Z) != 0x0;
+    case (0x0): return (cpsr & Z) == 0x4;
+    case (0x1): return (cpsr & Z) == 0x0;
     case (0xA): return (cpsr & N) >> 3 == (cpsr & V);
     case (0xB): return (cpsr & N) >> 3 != (cpsr & V);
-    case (0xC): return ((cpsr & N) >> 3 == (cpsr & V)) && ((cpsr & Z) == 0x1);
-    case (0xD): return ((cpsr & Z) == 0x1) || ((cpsr & N) >> 3 != (cpsr & V));
+    case (0xC): return ((cpsr & N) >> 3 == (cpsr & V)) && ((cpsr & Z) == 0x0);
+    case (0xD): return ((cpsr & Z) == 0x4) || ((cpsr & N) >> 3 != (cpsr & V));
     case (0xE): return 1;
     default: printf("ERROR: Condition code %c is not acceptable\n", cond);
   }
@@ -69,17 +50,6 @@ int checkCond(uint8_t cond, uint32_t *registers) {
 int checkInstrCond(uint32_t *registers, uint32_t instr) {
   uint8_t cond = instr >> 28;
   return checkCond(cond, registers);
-}
-
-void condChecks(uint32_t *registers) {
-  *(registers + CPSR) = 0xf0000000;
-  printf("Code 0000 returns %d\n", checkCond(0x0, registers));
-  printf("Code 0001 returns %d\n", checkCond(0x1, registers));
-  printf("Code 1010 returns %d\n", checkCond(0xA, registers));
-  printf("Code 1011 returns %d\n", checkCond(0xB, registers));
-  printf("Code 1100 returns %d\n", checkCond(0xC, registers));
-  printf("Code 1101 returns %d\n", checkCond(0xD, registers));
-  printf("Code 1110 returns %d\n", checkCond(0xE, registers));
 }
 
 /*** Processing Instructions ***/
@@ -135,6 +105,35 @@ void process(uint8_t *memory, uint32_t *registers)
   else printf("not a valid instruction u schmuck");
 }
 
+/*** Debugging tools ***/
+void printMemoryComposition(uint8_t *memory, int size)
+{
+    for (int i = 0; i < size; i++)
+      printf("Memory at %d = %02x\n", i, memory[i]);
+}
+
+void printRegisterComposition(uint32_t *registers)
+{
+  for (int i = 0; i < 13; i++)
+    printf("E%02d: %08x\n", i, registers[i]);
+  printf("ESP: %08x\n", registers[SP]);
+  printf("ELR: %08x\n", registers[LR]);
+  printf("EPC: %08x\n", registers[PC]);
+  printf("CPSR: %08x\n", registers[CPSR]);
+}
+
+void condChecks(uint32_t *registers, uint32_t cpsrState) {
+  *(registers + CPSR) = cpsrState;
+  printf("CPSR: %x\n", cpsrState);
+  printf("Code 0000 returns %d\n", checkCond(0x0, registers));
+  printf("Code 0001 returns %d\n", checkCond(0x1, registers));
+  printf("Code 1010 returns %d\n", checkCond(0xA, registers));
+  printf("Code 1011 returns %d\n", checkCond(0xB, registers));
+  printf("Code 1100 returns %d\n", checkCond(0xC, registers));
+  printf("Code 1101 returns %d\n", checkCond(0xD, registers));
+  printf("Code 1110 returns %d\n\n", checkCond(0xE, registers));
+}
+
 int main(int argc, char **argv)
 {
   uint8_t *memory;
@@ -164,10 +163,13 @@ int main(int argc, char **argv)
   process(memory, registers);
   *(registers + CPSR) = 0xF0000000;
 
-  printMemoryComposition(memory, procSize);
-  printRegisterComposition(registers);
+  //printMemoryComposition(memory, procSize);
+  //printRegisterComposition(registers);
 
-  condChecks(registers);
+  /*for (int i = 0; i <= 16; i++) {
+    uint32_t cpsrState = 0x10000000 * i;
+    condChecks(registers, cpsrState);
+  }*/
 
   free(memory);
   free(registers);
