@@ -24,6 +24,14 @@ void printRegisterComposition(unsigned long *registers)
 
 /*** End of debugging tools ***/
 
+int patternMatcher(unsigned long instr, unsigned long pattern, unsigned long mask)
+{
+  unsigned long modified = ((~(instr ^ pattern)) & mask) | ~(mask);
+  if (modified == 0) return 0;
+  if (((modified + 1) & modified) == 0) return 1;
+  return 0;
+}
+
 /*** Processing Instructions ***/
 /* All data processing instructions take the base address of the
   memory and registers, and the instruction as arguments */
@@ -48,25 +56,31 @@ void branchDataTransfer(unsigned char *memory, unsigned long *registers, unsigne
 }
 
 /*** Pipeline ***/
-void fetch(unsigned char *memory, unsigned long *registers)
+void process(unsigned char *memory, unsigned long *registers)
 {
+  const unsigned long DATA_PROCESS_PATTERN = 0x00000000;
+  const unsigned long DATA_PROCESS_MASK = 0x0C000000;
+  const unsigned long MULTIPLY_PATTERN = 0x00000090;
+  const unsigned long MULTIPLY_MASK = 0x0FC00090;
+  const unsigned long SDT_PATTERN = 0x04000000;
+  const unsigned long SDT_MASK = 0x0C060000;
+  const unsigned long BRANCH_PATTERN = 0x0A000000;
+  const unsigned long BRANCH_MASK = 0x0F000000;
   unsigned long pc = *(registers + PC);
   unsigned long instr = memory[pc + 3] |
     memory[pc + 2] << 8 |
     memory[pc + 1] << 16 |
     memory[pc] << 24;
-  if (~(instr ^ 0x90) & 0x0FC000F0)
+  if (patternMatcher(instr, MULTIPLY_PATTERN, MULTIPLY_MASK))
     multiply(memory, registers, instr);
-  else if (~(instr ^ 0x0) & 0x0C000000)
+  else if (patternMatcher(instr, DATA_PROCESS_PATTERN, DATA_PROCESS_MASK))
     dataProcess(memory, registers, instr);
-  else if (~(instr ^ 0x04000000) & 0x0C600000)
+  else if (patternMatcher(instr, SDT_PATTERN, SDT_MASK))
     singleDataTransfer(memory, registers, instr);
-  else if (~(instr ^ 0x0A000000) & 0x0F000000)
+  else if (patternMatcher(instr, BRANCH_PATTERN, BRANCH_MASK))
     branchDataTransfer(memory, registers, instr);
   else printf("not a valid instruction u schmuck");
 }
-
-//yappy test
 
 int main(int argc, char **argv)
 {
@@ -94,10 +108,10 @@ int main(int argc, char **argv)
   fseek(proc, 0, SEEK_SET);
   fread(memory, sizeof(char), procSize, proc);
 
-  fetch(memory, registers);
+  process(memory, registers);
 
-  printMemoryComposition(memory, procSize);
-  printRegisterComposition(registers);
+  //printMemoryComposition(memory, procSize);
+  //printRegisterComposition(registers);
 
   free(memory);
   free(registers);
