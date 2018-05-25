@@ -16,6 +16,7 @@
 */
 
 
+
 /*** Debugging tools ***/
 void printMemoryComposition(uint8_t *memory, int size)
 {
@@ -89,6 +90,17 @@ int checkCond(char cond, uint32_t *registers) {
    return -1;
 }
 
+void condChecks(uint32_t *registers) {
+  *(registers + CPSR) = 0xf0000000;
+  printf("Code 0000 returns %d\n", checkCond(0x0, registers));
+  printf("Code 0001 returns %d\n", checkCond(0x1, registers));
+  printf("Code 1010 returns %d\n", checkCond(0xA, registers));
+  printf("Code 1011 returns %d\n", checkCond(0xB, registers));
+  printf("Code 1100 returns %d\n", checkCond(0xC, registers));
+  printf("Code 1101 returns %d\n", checkCond(0xD, registers));
+  printf("Code 1110 returns %d\n", checkCond(0xE, registers));
+}
+
 /*** Pipeline ***/
 void process(uint8_t *memory, uint32_t *registers)
 {
@@ -149,7 +161,7 @@ int main(int argc, char **argv)
   printMemoryComposition(memory, procSize);
   printRegisterComposition(registers);
 
-  printf("%d\n", checkCond(0,registers));
+  condChecks(registers);
 
   free(memory);
   free(registers);
