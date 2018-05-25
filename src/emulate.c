@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <assert.h>
+
 #define SP 13 //shared pointer
 #define LR 14 //link register
 #define PC 15 //program counter
@@ -27,6 +29,9 @@ int patternMatcher(uint32_t instr, uint32_t pattern, uint32_t mask)
 }
 
 /*** Helper functions for Processing Instructions ***/
+
+/* Check CSPR registers against a given condition code.
+ * Return 1 if condition is met, 0 if it is not.*/
 int checkCond(uint8_t cond, uint32_t *registers) {
   uint8_t cpsr = *(registers + CPSR) >> 28;
   uint8_t N = 0x8;
@@ -47,6 +52,9 @@ int checkCond(uint8_t cond, uint32_t *registers) {
   return -1;
 }
 
+
+/* Check CSPR registers against conditions set according to the first four bits of the instr.
+ * Return 1 if condition is met, 0 if it is not.*/
 int checkInstrCond(uint32_t *registers, uint32_t instr) {
   uint8_t cond = instr >> 28;
   return checkCond(cond, registers);
@@ -55,9 +63,18 @@ int checkInstrCond(uint32_t *registers, uint32_t instr) {
 /*** Processing Instructions ***/
 /* All data processing instructions take the base address of the
   memory and registers, and the instruction as arguments */
-void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr)
-{
-  printf("This is a data processing instruction\n");
+
+// Return bit at given position in instr.
+int getInstrBit(uint32_t instr, int position) {
+  assert(0 <= position && position <= 31);
+  uint32_t mask = 1 << position;
+  return !((instr & mask) == 0);
+}
+
+void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr) {
+  if (!checkInstrCond(registers, instr)) { return; }
+
+
 }
 
 void multiply(uint8_t *memory, uint32_t *registers, uint32_t instr)
@@ -73,6 +90,7 @@ void singleDataTransfer(uint8_t *memory, uint32_t *registers, uint32_t instr)
 void branchDataTransfer(uint8_t *memory, uint32_t *registers, uint32_t instr)
 {
   printf("This is a branch instruction\n");
+  /* Sam, use checkIntstrCond */
   /*instr = calloc(32, sizeof(long));
   uint8_t cond = instr >> 28;*/
 }
@@ -102,7 +120,7 @@ void process(uint8_t *memory, uint32_t *registers)
     singleDataTransfer(memory, registers, instr);
   else if (patternMatcher(instr, BRANCH_PATTERN, BRANCH_MASK))
     branchDataTransfer(memory, registers, instr);
-  else printf("not a valid instruction u schmuck");
+  else printf("not a valid instruction u schmuck\n");
 }
 
 /*** Debugging tools ***/
@@ -163,6 +181,7 @@ int main(int argc, char **argv)
   process(memory, registers);
   *(registers + CPSR) = 0xF0000000;
 
+  /* Debugging */
   //printMemoryComposition(memory, procSize);
   //printRegisterComposition(registers);
 
@@ -170,6 +189,16 @@ int main(int argc, char **argv)
     uint32_t cpsrState = 0x10000000 * i;
     condChecks(registers, cpsrState);
   }*/
+
+  /*
+  uint32_t getInstrBitTest = 0x00000001;
+  for (int i = 31; i >= 0; i--) {
+      printf("%d", getInstrBit(getInstrBitTest, i));
+  }
+  */
+
+
+  /* End of debugging*/
 
   free(memory);
   free(registers);
