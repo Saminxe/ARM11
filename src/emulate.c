@@ -1,9 +1,20 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #define SP 13 //shared pointer
 #define LR 14 //link register
 #define PC 15 //program counter
 #define CPSR 16 //flags register
+
+/*
+██████╗ ██╗   ██╗████████╗███████╗     ██████╗ ██████╗ ██████╗ ███████╗██████╗     ██╗███████╗    ██╗     ██╗████████╗████████╗██╗     ███████╗    ███████╗███╗   ██╗██████╗ ██╗ █████╗ ███╗   ██╗
+██╔══██╗╚██╗ ██╔╝╚══██╔══╝██╔════╝    ██╔═══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗    ██║██╔════╝    ██║     ██║╚══██╔══╝╚══██╔══╝██║     ██╔════╝    ██╔════╝████╗  ██║██╔══██╗██║██╔══██╗████╗  ██║
+██████╔╝ ╚████╔╝    ██║   █████╗      ██║   ██║██████╔╝██║  ██║█████╗  ██████╔╝    ██║███████╗    ██║     ██║   ██║      ██║   ██║     █████╗      █████╗  ██╔██╗ ██║██║  ██║██║███████║██╔██╗ ██║
+██╔══██╗  ╚██╔╝     ██║   ██╔══╝      ██║   ██║██╔══██╗██║  ██║██╔══╝  ██╔══██╗    ██║╚════██║    ██║     ██║   ██║      ██║   ██║     ██╔══╝      ██╔══╝  ██║╚██╗██║██║  ██║██║██╔══██║██║╚██╗██║
+██████╔╝   ██║      ██║   ███████╗    ╚██████╔╝██║  ██║██████╔╝███████╗██║  ██║    ██║███████║    ███████╗██║   ██║      ██║   ███████╗███████╗    ███████╗██║ ╚████║██████╔╝██║██║  ██║██║ ╚████║
+╚═════╝    ╚═╝      ╚═╝   ╚══════╝     ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝    ╚═╝╚══════╝    ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚══════╝╚══════╝    ╚══════╝╚═╝  ╚═══╝╚═════╝ ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
+*/
+
 
 /*** Debugging tools ***/
 void printMemoryComposition(unsigned char *memory, int size)
@@ -24,6 +35,7 @@ void printRegisterComposition(unsigned long *registers)
 
 /*** End of debugging tools ***/
 
+/*** Generic pattern matcher ***/
 int patternMatcher(unsigned long instr, unsigned long pattern, unsigned long mask)
 {
   unsigned long modified = ((~(instr ^ pattern)) & mask) | ~(mask);
@@ -67,10 +79,11 @@ void process(unsigned char *memory, unsigned long *registers)
   const unsigned long BRANCH_PATTERN = 0x0A000000;
   const unsigned long BRANCH_MASK = 0x0F000000;
   unsigned long pc = *(registers + PC);
-  unsigned long instr = memory[pc + 3] |
-    memory[pc + 2] << 8 |
-    memory[pc + 1] << 16 |
-    memory[pc] << 24;
+  uint32_t instr = memory[pc] |
+    memory[pc + 1] << 8 |
+    memory[pc + 2] << 16 |
+    memory[pc + 3] << 24;
+  printf("%x\n", instr);
   if (patternMatcher(instr, MULTIPLY_PATTERN, MULTIPLY_MASK))
     multiply(memory, registers, instr);
   else if (patternMatcher(instr, DATA_PROCESS_PATTERN, DATA_PROCESS_MASK))
@@ -110,8 +123,8 @@ int main(int argc, char **argv)
 
   process(memory, registers);
 
-  //printMemoryComposition(memory, procSize);
-  //printRegisterComposition(registers);
+  printMemoryComposition(memory, procSize);
+  printRegisterComposition(registers);
 
   free(memory);
   free(registers);
