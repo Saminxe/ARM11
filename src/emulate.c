@@ -66,6 +66,8 @@ void fetch(unsigned char *memory, unsigned long *registers)
   else printf("not a valid instruction u schmuck");
 }
 
+//yappy test
+
 int main(int argc, char **argv)
 {
   unsigned char *memory;
