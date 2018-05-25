@@ -67,7 +67,7 @@ int checkCond(uint8_t cond, uint32_t *registers) {
 
 int checkInstrCond(uint32_t *registers, uint32_t instr) {
   uint8_t cond = instr >> 28;
-  checkCond(cond, *registers);
+  return checkCond(cond, registers);
 }
 
 /*** Processing Instructions ***/
