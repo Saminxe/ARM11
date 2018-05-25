@@ -17,28 +17,28 @@
 
 
 /*** Debugging tools ***/
-void printMemoryComposition(unsigned char *memory, int size)
+void printMemoryComposition(uint8_t *memory, int size)
 {
     for (int i = 0; i < size; i++)
       printf("Memory at %d = %02x\n", i, memory[i]);
 }
 
-void printRegisterComposition(unsigned long *registers)
+void printRegisterComposition(uint32_t *registers)
 {
   for (int i = 0; i < 13; i++)
-    printf("E%02d: %08lx\n", i, registers[i]);
-  printf("ESP: %08lx\n", registers[SP]);
-  printf("ELR: %08lx\n", registers[LR]);
-  printf("EPC: %08lx\n", registers[PC]);
-  printf("CPSR: %08lx\n", registers[CPSR]);
+    printf("E%02d: %08x\n", i, registers[i]);
+  printf("ESP: %08x\n", registers[SP]);
+  printf("ELR: %08x\n", registers[LR]);
+  printf("EPC: %08x\n", registers[PC]);
+  printf("CPSR: %08x\n", registers[CPSR]);
 }
 
 /*** End of debugging tools ***/
 
 /*** Generic pattern matcher ***/
-int patternMatcher(unsigned long instr, unsigned long pattern, unsigned long mask)
+int patternMatcher(uint32_t instr, uint32_t pattern, uint32_t mask)
 {
-  unsigned long modified = ((~(instr ^ pattern)) & mask) | ~(mask);
+  uint32_t modified = ((~(instr ^ pattern)) & mask) | ~(mask);
   if (modified == 0) return 0;
   if (((modified + 1) & modified) == 0) return 1;
   return 0;
@@ -47,30 +47,30 @@ int patternMatcher(unsigned long instr, unsigned long pattern, unsigned long mas
 /*** Processing Instructions ***/
 /* All data processing instructions take the base address of the
   memory and registers, and the instruction as arguments */
-void dataProcess(unsigned char *memory, unsigned long *registers, unsigned long instr)
+void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr)
 {
   printf("This is a data processing instruction\n");
 }
 
-void multiply(unsigned char *memory, unsigned long *registers, unsigned long instr)
+void multiply(uint8_t *memory, uint32_t *registers, uint32_t instr)
 {
   printf("This is a multiply instruction\n");
 }
 
-void singleDataTransfer(unsigned char *memory, unsigned long *registers, unsigned long instr)
+void singleDataTransfer(uint8_t *memory, uint32_t *registers, uint32_t instr)
 {
   printf("This is an SDT instruction\n");
 }
 
-void branchDataTransfer(unsigned char *memory, unsigned long *registers, unsigned long instr)
+void branchDataTransfer(uint8_t *memory, uint32_t *registers, uint32_t instr)
 {
   printf("This is a branch instruction\n");
   /*instr = calloc(32, sizeof(long));
-  unsigned char cond = instr >> 28;*/
+  uint8_t cond = instr >> 28;*/
 }
 
-int checkCond(char cond, unsigned long *registers) {
-   unsigned char cpsr = *((char *) (registers + CPSR)); //is broken af
+int checkCond(char cond, uint32_t *registers) {
+   uint8_t cpsr = *((uint8_t *) (registers + CPSR)); //is broken af
    char N = 0x8;
    char Z = 0x4;
    //char C = 0x2;
@@ -90,17 +90,17 @@ int checkCond(char cond, unsigned long *registers) {
 }
 
 /*** Pipeline ***/
-void process(unsigned char *memory, unsigned long *registers)
+void process(uint8_t *memory, uint32_t *registers)
 {
-  const unsigned long DATA_PROCESS_PATTERN = 0x00000000;
-  const unsigned long DATA_PROCESS_MASK = 0x0C000000;
-  const unsigned long MULTIPLY_PATTERN = 0x00000090;
-  const unsigned long MULTIPLY_MASK = 0x0FC00090;
-  const unsigned long SDT_PATTERN = 0x04000000;
-  const unsigned long SDT_MASK = 0x0C060000;
-  const unsigned long BRANCH_PATTERN = 0x0A000000;
-  const unsigned long BRANCH_MASK = 0x0F000000;
-  unsigned long pc = *(registers + PC);
+  const uint32_t DATA_PROCESS_PATTERN = 0x00000000;
+  const uint32_t DATA_PROCESS_MASK = 0x0C000000;
+  const uint32_t MULTIPLY_PATTERN = 0x00000090;
+  const uint32_t MULTIPLY_MASK = 0x0FC00090;
+  const uint32_t SDT_PATTERN = 0x04000000;
+  const uint32_t SDT_MASK = 0x0C060000;
+  const uint32_t BRANCH_PATTERN = 0x0A000000;
+  const uint32_t BRANCH_MASK = 0x0F000000;
+  uint32_t pc = *(registers + PC);
   uint32_t instr = memory[pc] |
     memory[pc + 1] << 8 |
     memory[pc + 2] << 16 |
@@ -119,8 +119,8 @@ void process(unsigned char *memory, unsigned long *registers)
 
 int main(int argc, char **argv)
 {
-  unsigned char *memory;
-  unsigned long *registers;
+  uint8_t *memory;
+  uint32_t *registers;
   FILE *proc;
   int procSize;
 
@@ -129,8 +129,8 @@ int main(int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  memory = (unsigned char *) calloc(65536, sizeof(char));
-  registers = (unsigned long *) calloc(17, sizeof(long));
+  memory = (uint8_t *) calloc(65536, sizeof(char));
+  registers = (uint32_t *) calloc(17, sizeof(long));
   proc = fopen(argv[1], "rb");
 
   if (proc == NULL) {
