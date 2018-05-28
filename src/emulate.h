@@ -11,16 +11,20 @@
 #define C 0x2
 #define V 0x1
 
-void printMemoryComposition(uint8_t *memory, int size);
-void printRegisterComposition(uint32_t *registers);
-void condChecks(uint32_t *registers, uint32_t cpsrState);
+typedef struct {
+  uint8_t *memory;
+  uint32_t *registers;
+} State;
+
+void printState(State state);
+void condChecks(State state, uint32_t cpsrState);
 int patternMatcher(uint32_t instr, uint32_t pattern, uint32_t mask);
-int checkCond(uint8_t cond, uint32_t *registers);
-int checkInstrCond(uint32_t *registers, uint32_t instr);
+int checkCond(uint8_t cond, State state);
+int checkInstrCond(State state, uint32_t instr);
 int getInstrBit(uint32_t instr, int position);
-void setUnset(int flag, int set, uint32_t *registers);
-void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr);
-void multiply(uint8_t *memory, uint32_t *registers, uint32_t instr);
-void singleDataTransfer(uint8_t *memory, uint32_t *registers, uint32_t instr);
-void branchDataTransfer(uint8_t *memory, uint32_t *registers, uint32_t instr);
-void process(uint8_t *memory, uint32_t *registers);
+void setUnset(int flag, int set, State state);
+void dataProcess(State state, uint32_t instr);
+void multiply(State state, uint32_t instr);
+void singleDataTransfer(State state, uint32_t instr);
+void branchDataTransfer(State state, uint32_t instr);
+void process(State state);
