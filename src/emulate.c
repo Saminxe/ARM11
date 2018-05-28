@@ -143,9 +143,16 @@ void singleDataTransfer(State state, uint32_t instr)
 void branchDataTransfer(State state, uint32_t instr)
 {
   printf("This is a branch instruction\n");
-  /* Sam, use checkIntstrCond */
-  /*instr = calloc(32, sizeof(long));
-  uint8_t cond = instr >> 28;*/
+  if (checkInstrCond(state, instr)) {
+     int32_t offset = instr & 0xFFFFFF;
+     offset <<2;
+     int checkSign = offset >> 25;
+     if (checkSign) {
+        offset | 0xFC000000;
+     }
+     //PC += offset;
+     state.registers = (uint32_t*) PC;
+  }
 }
 
 /*** Pipeline ***/
