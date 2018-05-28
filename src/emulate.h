@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
+#include <inttypes.h>
+
 #define SP 13 //shared pointer
 #define LR 14 //link register
 #define PC 15 //program counter

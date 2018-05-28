@@ -123,9 +123,15 @@ void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr)
 
   // If Operand2 is an immediate value (I = 1)
   if (immediate) {
-    
+    // Rotation amount is twice the value in the 4 bit rotation field.
+    uint8_t rotate = (instr & 0x00000F00) >> 7;
+    uint32_t imm = (instr & 0x000000FF);
+    // Rotate right by "rotate"
+    oprand2 = imm >> rotate | imm << (32 - rotate);
   }
   // If Operand2 is a register (I = 0)
+  // Check bit 4 to see if shift by constant amount (0) or specified by a register (1)
+  uint8_t rm = (instr & 0x000000FF);
 
   // Opcode instructions
   int opcode3 = getInstrBit(instr, 24);
@@ -288,6 +294,7 @@ int main(int argc, char **argv)
   process(memory, registers);
 
   /* Debugging */
+
   //printMemoryComposition(memory, procSize);
   //printRegisterComposition(registers);
 
@@ -301,7 +308,13 @@ int main(int argc, char **argv)
   for (int i = 31; i >= 0; i--) {
       printf("%d", getInstrBit(getInstrBitTest, i));
   }
-  */
+
+  uint32_t imm = 0x000000FF;
+  uint8_t rotate = 0x1;
+  uint32_t rotated = imm >> rotate | imm << (32 - rotate);
+  printf("%" PRIu32 "\n", imm);
+
+*/
 
 
   /* End of debugging*/
