@@ -111,9 +111,83 @@ int getInstrBit(uint32_t instr, int position) {
 
 void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr)
 {
-  if (!checkInstrCond(registers, instr)) { return; }
+  if (!checkInstrCond(registers, instr)) return;
+  //printf("This is a data processing instruction\n");
 
+  int immediate = getInstrBit(instr, 25); // I
+  uint8_t opcode = (instr & 0x1E000000) >> 21; // OpCode
+  int set = getInstrBit(instr,20); // S
+  uint8_t rn = (instr & 0x000F0000) >> 16; // Rn
+  uint8_t rd = (instr & 0x0000F000) >> 12; // Rd
+  uint8_t oprand2 = (instr & 0x00000FFF); // Operand2
 
+  // If Operand2 is an immediate value (I = 1)
+  if (immediate) {
+    
+  }
+  // If Operand2 is a register (I = 0)
+
+  // Opcode instructions
+  int opcode3 = getInstrBit(instr, 24);
+  int opcode2 = getInstrBit(instr, 23);
+  int opcode1 = getInstrBit(instr, 22);
+  int opcode0 = getInstrBit(instr, 21);
+  if (opcode3) {
+    if (opcode2) {
+      if (opcode1) {
+        if (opcode0) {
+          //1111
+        }
+        //1110
+      }
+      if (opcode0) {
+        //1101
+        registers[rd] = oprand2;
+      }
+      //1100
+      registers[rd] = registers[rn] | oprand2;
+    }
+    if (opcode1) {
+      if (opcode0) {
+        //1011
+      }
+      //1010
+      registers[rn] - oprand2;
+    }
+    if (opcode0){
+      //1001
+      registers[rn] ^ oprand2;
+    }
+    //1000
+    registers[rn] & oprand2;
+  }
+  if (opcode2) {
+    if (opcode1) {
+      if (opcode0) {
+        //0111
+      }
+      //0110
+    }
+    if (opcode0) {
+      //0101
+    }
+    //0100
+    registers[rd] = registers[rn] + oprand2;
+  }
+  if (opcode1) {
+    if (opcode0) {
+      //0011
+      registers[rd] = oprand2 - registers[rn];
+    }
+    //0010
+    registers[rd] = registers[rn] - oprand2;
+  }
+  if (opcode0){
+    //0001
+    registers[rd] = registers[rn] ^ oprand2;
+  }
+  //0000
+  registers[rd] = registers[rn] & oprand2;
 }
 
 void multiply(uint8_t *memory, uint32_t *registers, uint32_t instr)
