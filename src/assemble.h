@@ -4,6 +4,7 @@
 #include <string.h>
 
 #define BUFFER_SIZE 512
+#define DEFAULT_MAP_SIZE 120
 
 typedef struct {
   char *key;
@@ -12,7 +13,7 @@ typedef struct {
 
 typedef struct {
   int size;
-  Entry entries[];
+  Entry entries[DEFAULT_MAP_SIZE];
 } Map;
 
 int contains(char *string, char c);
