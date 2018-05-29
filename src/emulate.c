@@ -115,11 +115,11 @@ void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr)
   //printf("This is a data processing instruction\n");
 
   int immediate = getInstrBit(instr, 25); // I
-  uint8_t opcode = (instr & 0x1E000000) >> 21; // OpCode
+  uint4_t opcode = (instr & 0x1E000000) >> 21; // OpCode
   int set = getInstrBit(instr,20); // S
-  uint8_t rn = (instr & 0x000F0000) >> 16; // Rn
-  uint8_t rd = (instr & 0x0000F000) >> 12; // Rd
-  uint8_t oprand2 = (instr & 0x00000FFF); // Operand2
+  uint4_t rn = (instr & 0x000F0000) >> 16; // Rn
+  uint4_t rd = (instr & 0x0000F000) >> 12; // Rd
+  uint32_t oprand2 = (instr & 0x00000FFF); // Operand2
 
   // If Operand2 is an immediate value (I = 1)
   if (immediate) {
@@ -128,8 +128,17 @@ void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr)
     uint32_t imm = (instr & 0x000000FF);
     // Rotate right by "rotate"
     oprand2 = imm >> rotate | imm << (32 - rotate);
-  }
+  } else{
   // If Operand2 is a register (I = 0)
+    uint4_t rm = (instr & 0x0000000F);
+    uint8_t integer;
+    uint4_t rs;
+    if (!getInstrBit(instr,4)) {
+      integer = instr & 0x00000F80;
+    } else {
+      rs = instr & 0x00000F00;
+    }
+  }
   // Check bit 4 to see if shift by constant amount (0) or specified by a register (1)
   uint8_t rm = (instr & 0x000000FF);
 
