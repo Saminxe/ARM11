@@ -41,6 +41,32 @@ int main(int argc, char **argv) {
     }
   }
 
+
+  //operation code table
+  int OPTAB() {
+    typedef struct{
+        int size = 0;
+
+    }OMap;
+  }
+
+
+  //location counter
+  int LOCCTR() {
+
+  }
+
+
+  //symbol table
+  int SYMTAB() {
+
+  }
+
+
+
+
+
+
   /* Translation Loop */
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
 
@@ -73,4 +99,9 @@ uint8_t getKeyVal(Map m, char *k) {
       return m.entries[i].val;
   }
   return -1;
+}
+
+int branchInstruction() {
+  char[](label);
+  label =
 }
