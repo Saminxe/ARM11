@@ -114,10 +114,10 @@ void dataProcess(State state, uint32_t instr)
   if (!checkInstrCond(state, instr))  return; //printf("This is a data processing instruction\n");
 
   int immediate = getInstrBit(instr, 25); // I
-  uint4_t opcode = (instr & 0x1E000000) >> 21; // OpCode
+  uint8_t opcode = (instr & 0x1E000000) >> 21; // OpCode
   int set = getInstrBit(instr,20); // S
-  uint4_t rn = (instr & 0x000F0000) >> 16; // Rn
-  uint4_t rd = (instr & 0x0000F000) >> 12; // Rd
+  uint8_t rn = (instr & 0x000F0000) >> 16; // Rn
+  uint8_t rd = (instr & 0x0000F000) >> 12; // Rd
   uint32_t oprand2 = (instr & 0x00000FFF); // Operand2
 
   // If Operand2 is an immediate value (I = 1)
@@ -129,9 +129,9 @@ void dataProcess(State state, uint32_t instr)
     oprand2 = imm >> rotate | imm << (32 - rotate);
   } else{
   // If Operand2 is a register (I = 0)
-    uint4_t rm = (instr & 0x0000000F);
+    uint8_t rm = (instr & 0x0000000F);
     uint8_t integer;
-    uint4_t rs;
+    uint8_t rs;
     if (!getInstrBit(instr,4)) {
       integer = instr & 0x00000F80;
     } else {
@@ -156,24 +156,24 @@ void dataProcess(State state, uint32_t instr)
       }
       if (opcode0) {
         //1101
-        registers[rd] = oprand2;
+        state.registers[rd] = oprand2;
       }
       //1100
-      registers[rd] = registers[rn] | oprand2;
+      state.registers[rd] = state.registers[rn] | oprand2;
     }
     if (opcode1) {
       if (opcode0) {
         //1011
       }
       //1010
-      registers[rn] - oprand2;
+      state.registers[rn] - oprand2;
     }
     if (opcode0){
       //1001
-      registers[rn] ^ oprand2;
+      state.registers[rn] ^ oprand2;
     }
     //1000
-    registers[rn] & oprand2;
+    state.registers[rn] & oprand2;
   }
   if (opcode2) {
     if (opcode1) {
@@ -186,22 +186,22 @@ void dataProcess(State state, uint32_t instr)
       //0101
     }
     //0100
-    registers[rd] = registers[rn] + oprand2;
+    state.registers[rd] = state.registers[rn] + oprand2;
   }
   if (opcode1) {
     if (opcode0) {
       //0011
-      registers[rd] = oprand2 - registers[rn];
+      state.registers[rd] = oprand2 - state.registers[rn];
     }
     //0010
-    registers[rd] = registers[rn] - oprand2;
+    state.registers[rd] = state.registers[rn] - oprand2;
   }
   if (opcode0){
     //0001
-    registers[rd] = registers[rn] ^ oprand2;
+    state.registers[rd] = state.registers[rn] ^ oprand2;
   }
   //0000
-  registers[rd] = registers[rn] & oprand2;
+  state.registers[rd] = state.registers[rn] & oprand2;
 
 }
 
