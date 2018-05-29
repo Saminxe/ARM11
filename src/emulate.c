@@ -10,33 +10,33 @@
 */
 
 /*** Debugging tools ***/
-void printMemoryComposition(uint8_t *memory, int size)
+void printState(State state)
 {
-    for (int i = 0; i < size; i++)
-      printf("Memory at %d = %02x\n", i, memory[i]);
+  int i = 0;
+  do {
+    printf("Memory at %d = %02x\n", i, state.memory[i]);
+    i++;
+  } while ((state.memory[i] != 0) && (i < 65536));
+  for (int j = 0; j < 13; j++)
+    printf("E%02d: %08x\n", j, state.registers[j]);
+  printf("ESP: %08x\n", state.registers[SP]);
+  printf("ELR: %08x\n", state.registers[LR]);
+  printf("EPC: %08x\n", state.registers[PC]);
+  printf("CPSR: %08x\n", state.registers[CPSR]);
 }
 
-void printRegisterComposition(uint32_t *registers)
-{
-  for (int i = 0; i < 13; i++)
-    printf("E%02d: %08x\n", i, registers[i]);
-  printf("ESP: %08x\n", registers[SP]);
-  printf("ELR: %08x\n", registers[LR]);
-  printf("EPC: %08x\n", registers[PC]);
-  printf("CPSR: %08x\n", registers[CPSR]);
-}
 
-void condChecks(uint32_t *registers, uint32_t cpsrState)
+void condChecks(State state, uint32_t cpsrState)
 {
-  *(registers + CPSR) = cpsrState;
+  state.registers[CPSR] = cpsrState;
   printf("CPSR: %x\n", cpsrState);
-  printf("Code 0000 returns %d\n", checkCond(0x0, registers));
-  printf("Code 0001 returns %d\n", checkCond(0x1, registers));
-  printf("Code 1010 returns %d\n", checkCond(0xA, registers));
-  printf("Code 1011 returns %d\n", checkCond(0xB, registers));
-  printf("Code 1100 returns %d\n", checkCond(0xC, registers));
-  printf("Code 1101 returns %d\n", checkCond(0xD, registers));
-  printf("Code 1110 returns %d\n\n", checkCond(0xE, registers));
+  printf("Code 0000 returns %d\n", checkCond(0x0, state));
+  printf("Code 0001 returns %d\n", checkCond(0x1, state));
+  printf("Code 1010 returns %d\n", checkCond(0xA, state));
+  printf("Code 1011 returns %d\n", checkCond(0xB, state));
+  printf("Code 1100 returns %d\n", checkCond(0xC, state));
+  printf("Code 1101 returns %d\n", checkCond(0xD, state));
+  printf("Code 1110 returns %d\n\n", checkCond(0xE, state));
 }
 /*** End of debugging tools ***/
 
@@ -53,9 +53,9 @@ int patternMatcher(uint32_t instr, uint32_t pattern, uint32_t mask)
 
 /* Check CSPR registers against a given condition code.
  * Return 1 if condition is met, 0 if it is not.*/
-int checkCond(uint8_t cond, uint32_t *registers)
+int checkCond(uint8_t cond, State state)
 {
-  uint8_t cpsr = *(registers + CPSR) >> 28;
+  uint8_t cpsr = state.registers[CPSR] >> 28;
   switch (cond) {
     case (0x0): return (cpsr & Z) == 0x4;
     case (0x1): return (cpsr & Z) == 0x0;
@@ -71,21 +71,21 @@ int checkCond(uint8_t cond, uint32_t *registers)
 
 /* Sets/unsets the desired flag in CPSR.
   1 = Set, 0 = Unset. */
-void setUnset(int flag, int set, uint32_t *registers)
+void setUnset(int flag, int set, State state)
 {
   if (set) {
     switch (flag) {
-      case (V): registers[CPSR] |= 0x10000000; break;
-      case (C): registers[CPSR] |= 0x20000000; break;
-      case (Z): registers[CPSR] |= 0x40000000; break;
-      case (N): registers[CPSR] |= 0x80000000; break;
+      case (V): state.registers[CPSR] |= 0x10000000; break;
+      case (C): state.registers[CPSR] |= 0x20000000; break;
+      case (Z): state.registers[CPSR] |= 0x40000000; break;
+      case (N): state.registers[CPSR] |= 0x80000000; break;
     }
   } else {
     switch (flag) {
-      case (V): registers[CPSR] &= 0xEFFFFFFF; break;
-      case (C): registers[CPSR] &= 0xDFFFFFFF; break;
-      case (Z): registers[CPSR] &= 0xBFFFFFFF; break;
-      case (N): registers[CPSR] &= 0x7FFFFFFF; break;
+      case (V): state.registers[CPSR] &= 0xEFFFFFFF; break;
+      case (C): state.registers[CPSR] &= 0xDFFFFFFF; break;
+      case (Z): state.registers[CPSR] &= 0xBFFFFFFF; break;
+      case (N): state.registers[CPSR] &= 0x7FFFFFFF; break;
     }
   }
 }
@@ -93,9 +93,9 @@ void setUnset(int flag, int set, uint32_t *registers)
 
 /* Check CSPR registers against conditions set according to the first four bits of the instr.
  * Return 1 if condition is met, 0 if it is not.*/
-int checkInstrCond(uint32_t *registers, uint32_t instr) {
+int checkInstrCond(State state, uint32_t instr) {
   uint8_t cond = instr >> 28;
-  return checkCond(cond, registers);
+  return checkCond(cond, state);
 }
 
 /*** Processing Instructions ***/
@@ -109,10 +109,9 @@ int getInstrBit(uint32_t instr, int position) {
   return !((instr & mask) == 0);
 }
 
-void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr)
+void dataProcess(State state, uint32_t instr)
 {
-  if (!checkInstrCond(registers, instr)) return;
-  //printf("This is a data processing instruction\n");
+  if (!checkInstrCond(state, instr))  return; //printf("This is a data processing instruction\n");
 
   int immediate = getInstrBit(instr, 25); // I
   uint4_t opcode = (instr & 0x1E000000) >> 21; // OpCode
@@ -203,9 +202,10 @@ void dataProcess(uint8_t *memory, uint32_t *registers, uint32_t instr)
   }
   //0000
   registers[rd] = registers[rn] & oprand2;
+
 }
 
-void multiply(uint8_t *memory, uint32_t *registers, uint32_t instr)
+void multiply(State state, uint32_t instr)
 {
   int acc = (instr & 0x00200000) >> 21;
   int set = (instr & 0x00100000) >> 20;
@@ -213,32 +213,41 @@ void multiply(uint8_t *memory, uint32_t *registers, uint32_t instr)
   uint8_t rn = (instr & 0x0000F000) >> 12;
   uint8_t rs = (instr & 0x00000F00) >> 8;
   uint8_t rm = (instr & 0x0000000F);
-  //printf("This is a multiply instruction\n");
-  if (!checkInstrCond(registers, instr)) return;
-  registers[rd] = registers[rm] * registers[rs];
-  if (acc)
-    registers[rd] += registers[rn];
+  if (!checkInstrCond(state, instr)) return;
+  state.registers[rd] = state.registers[rm] * state.registers[rs];
+  if (acc) {
+    state.registers[rd] += state.registers[rn];
+    //printf("Register E%02u = %u * %u + %u = %u\n", rd, state.registers[rm], state.registers[rs], state.registers[rn], state.registers[rd]);
+  }
+//  else printf("Register E%02u = %u * %u = %u\n", rd, state.registers[rm], state.registers[rs], state.registers[rd]);
   if (set) {
-    setUnset(N, registers[rd] >> 31, registers);
-    setUnset(Z, registers[rd] == 0, registers);
+    setUnset(N, state.registers[rd] >> 31, state);
+    setUnset(Z, state.registers[rd] == 0, state);
   }
 }
 
-void singleDataTransfer(uint8_t *memory, uint32_t *registers, uint32_t instr)
+void singleDataTransfer(State state, uint32_t instr)
 {
   printf("This is an SDT instruction\n");
 }
 
-void branchDataTransfer(uint8_t *memory, uint32_t *registers, uint32_t instr)
+void branchDataTransfer(State state, uint32_t instr)
 {
   printf("This is a branch instruction\n");
-  /* Sam, use checkIntstrCond */
-  /*instr = calloc(32, sizeof(long));
-  uint8_t cond = instr >> 28;*/
+  if (checkInstrCond(state, instr)) {
+     int32_t offset = instr & 0xFFFFFF;
+     offset = offset << 2;
+     int checkSign = offset >> 25;
+     if (checkSign) {
+        offset = offset | 0xFC000000;
+     }
+     state.registers[PC] += offset;
+     state.registers = (uint32_t*) PC;
+  }
 }
 
 /*** Pipeline ***/
-void process(uint8_t *memory, uint32_t *registers)
+void process(State state)
 {
   const uint32_t DATA_PROCESS_PATTERN = 0x00000000;
   const uint32_t DATA_PROCESS_MASK = 0x0C000000;
@@ -249,29 +258,30 @@ void process(uint8_t *memory, uint32_t *registers)
   const uint32_t BRANCH_PATTERN = 0x0A000000;
   const uint32_t BRANCH_MASK = 0x0F000000;
   do {
-    uint32_t instr = memory[*(registers + PC)] |
-      memory[*(registers + PC) + 1] << 8 |
-      memory[*(registers + PC) + 2] << 16 |
-      memory[*(registers + PC) + 3] << 24;
+    uint32_t instr = state.memory[state.registers[PC]] |
+      state.memory[state.registers[PC] + 1] << 8 |
+      state.memory[state.registers[PC] + 2] << 16 |
+      state.memory[state.registers[PC] + 3] << 24;
     //printf("%x\n", instr);
-    *(registers + PC) += 4;
+    state.registers[PC] += 4;
     if (instr == 0) break;
     else if (patternMatcher(instr, MULTIPLY_PATTERN, MULTIPLY_MASK))
-      multiply(memory, registers, instr);
+      multiply(state, instr);
     else if (patternMatcher(instr, DATA_PROCESS_PATTERN, DATA_PROCESS_MASK))
-      dataProcess(memory, registers, instr);
+      dataProcess(state, instr);
     else if (patternMatcher(instr, SDT_PATTERN, SDT_MASK))
-      singleDataTransfer(memory, registers, instr);
+      singleDataTransfer(state, instr);
     else if (patternMatcher(instr, BRANCH_PATTERN, BRANCH_MASK))
-      branchDataTransfer(memory, registers, instr);
+      branchDataTransfer(state, instr);
     else printf("not a valid instruction u schmuck\n");
-  } while (*(registers + PC) < 65536);
+    printState(state);
+  } while (state.registers[PC] < 65536);
 }
 
 int main(int argc, char **argv)
 {
-  uint8_t *memory;
-  uint32_t *registers;
+  State state = {(uint8_t *) calloc(65536, sizeof(char)),
+      (uint32_t *) calloc(17, sizeof(long))};
   FILE *proc;
   int procSize;
 
@@ -280,8 +290,6 @@ int main(int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  memory = (uint8_t *) calloc(65536, sizeof(char));
-  registers = (uint32_t *) calloc(17, sizeof(long));
   proc = fopen(argv[1], "rb");
 
   if (proc == NULL) {
@@ -292,15 +300,15 @@ int main(int argc, char **argv)
   fseek(proc, 0, SEEK_END);
   procSize = ftell(proc);
   fseek(proc, 0, SEEK_SET);
-  fread(memory, sizeof(char), procSize, proc);
+  fread(state.memory, sizeof(uint8_t), procSize, proc);
 
-  /* Register tests
-  registers[0] = 4;
-  registers[1] = 5;
-  registers[2] = 0xffff0000;
+  /* Register Tests
+  state.registers[0] = 4;
+  state.registers[1] = 5;
+  state.registers[2] = 0xffff0000;
   */
-  
-  process(memory, registers);
+
+  process(state);
 
   /* Debugging */
 
@@ -325,11 +333,10 @@ int main(int argc, char **argv)
 
 */
 
-
   /* End of debugging*/
 
-  free(memory);
-  free(registers);
+  free(state.memory);
+  free(state.registers);
   fclose(proc);
 
   return EXIT_SUCCESS;
