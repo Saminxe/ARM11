@@ -18,4 +18,5 @@ typedef struct {
 
 int contains(char *string, char c);
 int mapContainsKey(Map m, char *k);
+void addToMap(Map m, Entry e);
 uint8_t getKeyVal(Map m, char *k);

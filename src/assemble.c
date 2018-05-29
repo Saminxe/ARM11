@@ -60,6 +60,12 @@ int mapContainsKey(Map m, char *k)
   return 0;
 }
 
+void addToMap(Map m, Entry e)
+{
+  m.entries[m.size] = e;
+  m.size++;
+}
+
 uint8_t getKeyVal(Map m, char *k) {
   for (int i = 0; i < m.size; i++) {
     if (m.entries[i].key == k)
