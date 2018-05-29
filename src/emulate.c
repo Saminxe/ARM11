@@ -145,7 +145,7 @@ void branchDataTransfer(State state, uint32_t instr)
   printf("This is a branch instruction\n");
   if (checkInstrCond(state, instr)) {
      int32_t offset = instr & 0xFFFFFF;
-     offset = offset <<2;
+     offset = offset << 2;
      int checkSign = offset >> 25;
      if (checkSign) {
         offset = offset | 0xFC000000;
