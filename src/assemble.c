@@ -12,6 +12,7 @@ int contains(char *string, char c)
 int main(int argc, char **argv) {
   FILE* src;
   char *buffer = calloc(BUFFER_SIZE, sizeof(char));
+  Map symbolTable;
 
   /* Tests for correct amount of input variables */
   if (argc != 3) {
