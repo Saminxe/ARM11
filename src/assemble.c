@@ -72,28 +72,6 @@ int main(int argc, char **argv)
 
   printSymtab(symtab);
 
-
-  //operation code table
-  int OPTAB() {
-
-  }
-
-
-  //location counter
-  int LOCCTR() {
-
-  }
-
-
-  //symbol table
-  int SYMTAB() {
-
-  }
-
-
-
-
-
   /* Translation Loop */
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
 
@@ -344,6 +322,3 @@ int OPMap(State state, uint32_t instr)
 
 
 }
-
-
-
