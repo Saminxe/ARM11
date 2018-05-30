@@ -117,8 +117,8 @@ uint32_t ror(uint32_t value, uint8_t rotation) {
 }
 
 // Apply shift according to shift type.
-uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, int set) {
-  assert(0 <= amount <= 32);
+uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, int set, State state) {
+  assert(0 <= amount && amount <= 32);
   int bit6 = getInstrBit(instr, 6);
   int bit5 = getInstrBit(instr, 5);
   uint32_t result = value;
@@ -165,7 +165,17 @@ void checkOverflow(uint32_t a, uint32_t b, uint32_t res, State state) {
   }
 }
 
-
+// Check for borrowing for when performing a - b = res.
+void checkBorrow(uint32_t a, uint32_t b, uint32_t res, State state) {
+  int a31 = getInstrBit(a, 31);
+  int b31 = getInstrBit(b, 31);
+  int res31 = getInstrBit(res, 31);
+  if ((!a31 && b31) || (a31 && b31 && res31) || (!a31 && res31)) {
+    setUnset(C, 0, state);
+  } else {
+    setUnset(C, 1, state);
+  }
+}
 
 /*** Processing Instructions ***/
 /* All data processing instructions take the base address of the
@@ -202,7 +212,7 @@ void dataProcess(State state, uint32_t instr)
       uint8_t rs = instr & 0x00000F00;
       amount = state.registers[rs] & 0x0000000F;
     }
-    oprand2 = applyShiftType(value, instr, amount, set);
+    oprand2 = applyShiftType(value, instr, amount, set, state);
   }
 
   // Apply Opcode instructions
@@ -235,6 +245,8 @@ void dataProcess(State state, uint32_t instr)
         } else {
           //1010 cmp
           result = state.registers[rn] - oprand2;
+          if (set)
+            checkBorrow(state.registers[rn], oprand2, result, state);
         }
       } else {
         if (opcode0) {
@@ -269,9 +281,13 @@ void dataProcess(State state, uint32_t instr)
         if (opcode0) {
           //0011 rsb
           state.registers[rd] = (result = oprand2 - state.registers[rn]);
+          if (set)
+            checkBorrow(oprand2, state.registers[rn], result, state);
         } else {
           //0010 sub
           state.registers[rd] = (result = state.registers[rn] - oprand2);
+          if (set)
+            checkBorrow(state.registers[rn], oprand2, result, state);
         }
       } else {
         if (opcode0) {
