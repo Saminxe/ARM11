@@ -1,5 +1,14 @@
 #include "assemble.h"
 
+/* Debug */
+void printSymtab(SymbolTable s) {
+  int i = 0;
+  do {
+    printf("%s, %u", s.symbols[i].name, s.symbols[i].val);
+    i++;
+  } while (i < s.size);
+}
+
 int contains(char *string, char c)
 {
   int length = strlen(string);
@@ -9,10 +18,17 @@ int contains(char *string, char c)
   return 0;
 }
 
-int main(int argc, char **argv) {
+//operation code table
+int optab(char *string) {
+  return 1;
+}
+
+int main(int argc, char **argv)
+{
   FILE* src;
   char *buffer = calloc(BUFFER_SIZE, sizeof(char));
-  Map symbolTable;
+  uint8_t locctr = 0; // Starting address for memory allocations
+  SymbolTable symtab = {0, calloc(DEFAULT_MAP_SIZE, sizeof(Symbol))};
 
   /* Tests for correct amount of input variables */
   if (argc != 3) {
@@ -31,41 +47,29 @@ int main(int argc, char **argv) {
 
   /* Symbol Tablulation Loop */
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
-    char *nextToken = strtok(buffer, " ,");
-    while (nextToken) {
-      if (contains(nextToken, ':')) {
-        printf("LABEL: ");
+    char *opcode = strtok(buffer, " ");
+    char *operands = strtok(NULL, " ");
+    if (*opcode != ';') { // If it is not a comment
+      if (opcode[strlen(opcode) - 2] == ':') { // If it is a label
+        opcode[strlen(opcode) - 2] = 0;
+        printf("Label = %s\n", opcode);
+        if (symtabContains(symtab, opcode)) { // If the label is in symbtab
+          fprintf(stderr, "Duplicate symbol, aborting assembly.\n");
+          return -1;
+        } else {
+          Symbol new = {opcode, locctr};
+          symtabAdd(symtab, new);
+        }
+      } else if (optab(opcode)) {
+        printf("Opcode = %s, Operands = %s\n", opcode, operands);
+        locctr += 32; // Length of instruction
+      } else {
+        printf("Unrecognized opcode %s\n", opcode);
       }
-      printf("%s\n", nextToken);
-      nextToken = strtok(NULL, " ,");
     }
   }
 
-
-  //operation code table
-  int OPTAB() {
-    typedef struct{
-        int size = 0;
-
-    }OMap;
-  }
-
-
-  //location counter
-  int LOCCTR() {
-
-  }
-
-
-  //symbol table
-  int SYMTAB() {
-
-  }
-
-
-
-
-
+  printSymtab(symtab);
 
   /* Translation Loop */
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
@@ -78,30 +82,33 @@ int main(int argc, char **argv) {
 }
 
 /*** Lookup Functions ***/
-int mapContainsKey(Map m, char *k)
+int symtabContains(SymbolTable m, char *k)
 {
   for (int i = 0; i < m.size; i++) {
-    if (m.entries[i].key == k)
+    if (m.symbols[i].name == k)
       return 1;
   }
   return 0;
 }
 
-void addToMap(Map m, Entry e)
+void symtabAdd(SymbolTable m, Symbol e)
 {
-  m.entries[m.size] = e;
+  printf("Adding %s, %u\n", e.name, e.val);
+  m.symbols[m.size] = e;
   m.size++;
 }
 
-uint8_t getKeyVal(Map m, char *k) {
+uint8_t getKeyVal(SymbolTable m, char *k) {
   for (int i = 0; i < m.size; i++) {
-    if (m.entries[i].key == k)
-      return m.entries[i].val;
+    if (m.symbols[i].name == k)
+      return m.symbols[i].val;
   }
   return -1;
 }
 
+/*
 int branchInstruction() {
   char[](label);
   label =
 }
+*/

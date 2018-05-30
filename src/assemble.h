@@ -7,16 +7,16 @@
 #define DEFAULT_MAP_SIZE 120
 
 typedef struct {
-  char *key;
+  char *name;
   uint8_t val;
-} Entry;
+} Symbol;
 
 typedef struct {
   int size;
-  Entry entries[DEFAULT_MAP_SIZE];
-} Map;
+  Symbol *symbols;
+} SymbolTable;
 
 int contains(char *string, char c);
-int mapContainsKey(Map m, char *k);
-void addToMap(Map m, Entry e);
-uint8_t getKeyVal(Map m, char *k);
+int symtabContains(SymbolTable m, char *k);
+void symtabAdd(SymbolTable m, Symbol e);
+uint8_t getKeyVal(SymbolTable m, char *k);
