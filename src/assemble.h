@@ -5,6 +5,8 @@
 
 #define BUFFER_SIZE 512
 #define DEFAULT_MAP_SIZE 120
+#define PC 15
+#define CSPR 16
 
 typedef struct {
   char *name;

@@ -1,5 +1,14 @@
 #include "assemble.h"
 
+/* Debug */
+void printSymtab(SymbolTable s) {
+  int i = 0;
+  do {
+    printf("%s, %u", s.symbols[i].name, s.symbols[i].val);
+    i++;
+  } while (i < s.size);
+}
+
 int contains(char *string, char c)
 {
   int length = strlen(string);
@@ -9,10 +18,17 @@ int contains(char *string, char c)
   return 0;
 }
 
-int main(int argc, char **argv) {
+//operation code table
+int optab(char *string) {
+  return 1;
+}
+
+int main(int argc, char **argv)
+{
   FILE* src;
   char *buffer = calloc(BUFFER_SIZE, sizeof(char));
-  Map symbolTable;
+  uint8_t locctr = 0; // Starting address for memory allocations
+  SymbolTable symtab = {0, calloc(DEFAULT_MAP_SIZE, sizeof(Symbol))};
 
   /* Tests for correct amount of input variables */
   if (argc != 3) {
@@ -31,15 +47,30 @@ int main(int argc, char **argv) {
 
   /* Symbol Tablulation Loop */
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
-    char *nextToken = strtok(buffer, " ,");
-    while (nextToken) {
-      if (contains(nextToken, ':')) {
-        printf("LABEL: ");
+    char *opcode = strtok(buffer, " ");
+    char *operands = strtok(NULL, " ");
+    if (*opcode != ';') { // If it is not a comment
+      if (opcode[strlen(opcode) - 2] == ':') { // If it is a label
+        opcode[strlen(opcode) - 2] = 0;
+        printf("Label = %s\n", opcode);
+        if (symtabContains(symtab, opcode)) { // If the label is in symbtab
+          fprintf(stderr, "Duplicate symbol, aborting assembly.\n");
+          return -1;
+        } else {
+          Symbol new = {opcode, locctr};
+          symtabAdd(symtab, new);
+        }
+      } else if (optab(opcode)) {
+        printf("Opcode = %s, Operands = %s\n", opcode, operands);
+        locctr += 32; // Length of instruction
+      } else {
+        printf("Unrecognized opcode %s\n", opcode);
       }
-      printf("%s\n", nextToken);
-      nextToken = strtok(NULL, " ,");
     }
   }
+
+
+  printSymtab(symtab);
 
 
   //operation code table
@@ -63,7 +94,6 @@ int main(int argc, char **argv) {
 
 
 
-
   /* Translation Loop */
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
 
@@ -77,28 +107,30 @@ int main(int argc, char **argv) {
 }
 
 /*** Lookup Functions ***/
-int mapContainsKey(Map m, char *k)
+int symtabContains(SymbolTable m, char *k)
 {
   for (int i = 0; i < m.size; i++) {
-    if (m.entries[i].key == k)
+    if (m.symbols[i].name == k)
       return 1;
   }
   return 0;
 }
 
-void addToMap(Map m, Entry e)
+void symtabAdd(SymbolTable m, Symbol e)
 {
-  m.entries[m.size] = e;
+  printf("Adding %s, %u\n", e.name, e.val);
+  m.symbols[m.size] = e;
   m.size++;
 }
 
-uint8_t getKeyVal(Map m, char *k) {
+uint8_t getKeyVal(SymbolTable m, char *k) {
   for (int i = 0; i < m.size; i++) {
-    if (m.entries[i].key == k)
-      return m.entries[i].val;
+    if (m.symbols[i].name == k)
+      return m.symbols[i].val;
   }
   return -1;
 }
+
 
 //int branchInstruction() {
 //  char[](label);
@@ -133,86 +165,185 @@ int equals(char* a, char* b)
 
 
 //OPTAB (operation code table)
-//int OPMap(int cond)
-//{
-//  switch(cond) {
-//    case (OP.ADD): return 0x800000;
-//    case (OP.SUB): return 0x400000;
-//    case (OP.RSB): return 0x600000;
-//    case (OP.AND): return 0x0;
-//    case (OP.EOR): return 0x200000;
-//    case (OP.ORR): return 0x1800000;
-//    case (OP.MOV): return 0x1A00000
-//    case (OP.TST): return 0x1000000;
-//    case (OP.TEQ): return 0x1200000;
-//    case (OP.CMP): return 0x1400000;
-//    case (OP.MUL): return 0xE0000090;
-//    case (OP.MLA): return 0xE0200090;
-//    case (OP.LDR): return
-//    case (OP.STR): return
-//    case (OP.BEQ): return 0xA000000;
-//    case (OP.BNE): return 0x1A000000;
-//    case (OP.BGE): return 0xAA000000;
-//    case (OP.BLT): return 0xBA000000;
-//    case (OP.BGT): return 0xCA000000;
-//    case (OP.BLE): return 0xDA000000;
-//    case (OP.B): return 0xEA000000;
-//        //I've treated b as al
-//    case (OP.LSL): return 0x0; //unsure
-//    case (OP.ANDEQ): return 0x00000000;
-//
-//  }
+int OPMap(State state, uint32_t instr)
+{
+  uint8_t opcode = (instr & 0x1E000000) >> 21; // OpCode
+  uint8_t rn = (instr & 0x000F0000) >> 16; // Rn
+  uint8_t rd = (instr & 0x0000F000) >> 12; // Rd
+  uint32_t oprand2 = (instr & 0x00000FFF); // Operand2
+  uint8_t rm = (instr & 0x000000FF); //Rm
+  uint8_t rs = (instr & 0x00000F00); //Rs
 
+  void add() {
+    state.registers[rd] = state.registers[rn] + state.registers[oprand2];
+  }
 
+  void mov() {
+    state.registers[rd] = state.registers[opcode];
+  }
 
+  void adn() {
+    state.registers[rd] = state.registers[rn] & state.registers[opcode];
+  }
 
+  void eor() {
+    state.registers[rd] = state.registers[rn] ^ state.registers[opcode];
+  }
 
+  void sub() {
+    state.registers[rd] = state.registers[rn] - state.registers[opcode];
+  }
 
-  //here's some more legit code tbh
+  void rsb() {
+    state.registers[rd] = state.registers[opcode] - state.registers[rn];
+  }
 
+  void orr() {
+    state.registers[rd] = state.registers[rn] | state.registers[opcode];
+  }
 
-uint8_t opcode = (instr & 0x1E000000) >> 21; // OpCode
+  void tst() {
+    state.registers[CSPR] = state.registers[rn] & state.registers[opcode];
+  }
 
-uint8_t rn = (instr & 0x000F0000) >> 16; // Rn
-uint8_t rd = (instr & 0x0000F000) >> 12; // Rd
-uint32_t oprand2 = (instr & 0x00000FFF); // Operand2
-uint8_t rm = (instr & 0x000000FF);
+  void teq() {
+    state.registers[CSPR] = state.registers[rn] ^ state.registers[opcode];
+  }
 
+  void cmp() {
+    state.registers[CSPR] = state.registers[rn] - state.registers[opcode];
+  }
 
+  void mul() {
+    state.registers[rd] = state.registers[rm] * state.registers[rs];
+  }
 
+  void mla() {
+    mul() + state.registers[rn];
+  }
 
+  void ldr() {
+    if(instr < 0xFF) {
+      move();
+    }
+    state.registers[rd] = state.memory;
+  }
 
+  void str() {
+    state.memory = state.registers[rd];
+  }
 
+  void beq() {
+    state.registers[PC] = state.memory;
+  }
 
-  int add(State a, State b, State c) {
-    a.registers[rd] = b.registers[rn] + c.registers[oprand2];
+  void bne() {
+    state.registers[PC] = state.memory;
+  }
+
+  void bge() {
+    state.registers[PC] = state.memory;
+  }
+
+  void blt() {
+    state.registers[PC] = state.memory;
+  }
+
+  void bgt() {
+    state.registers[PC] = state.memory;
+  }
+
+  void ble() {
+    state.registers[PC] = state.memory;
+  }
+
+  void b() {
+    state.registers[PC] = state.memory;
+  }
+
+  void lsl() {
+    state.registers[rd] = state.registers[rd] << 0; //shifted left but no clue how much
+  }
+
+  void andeq() {
+  }
+
+  switch(instr) {
+    case (OP.ADD):
+      add(state);
+      return 0x800000;
+    case (OP.SUB):
+      sub(state);
+      return 0x400000;
+    case (OP.RSB):
+      rsb(state);
+      return 0x600000;
+    case (OP.AND):
+      adn(state);
+      return 0x0;
+    case (OP.EOR):
+      eor(state);
+      return 0x200000;
+    case (OP.ORR):
+      orr(state);
+      return 0x1800000;
+    case (OP.MOV):
+      mov(state, instr);
+      return 0x1A00000;
+    case (OP.TST):
+      tst();
+      return 0x1000000;
+    case (OP.TEQ):
+      teq();
+      return 0x1200000;
+    case (OP.CMP):
+      cmp();
+      return 0x1400000;
+    case (OP.MUL):
+      mul();
+      return 0xE0000090;
+    case (OP.MLA):
+      mla();
+      return 0xE0200090;
+    case (OP.LDR):
+      ldr();
+      return 0x4100000;
+    case (OP.STR):
+      str();
+      return 0x4000000;
+    case (OP.BEQ):
+      beq();
+      return 0xA000000;
+    case (OP.BNE):
+      bne();
+      return 0x1A000000;
+    case (OP.BGE):
+      bge();
+      return 0xAA000000;
+    case (OP.BLT):
+      blt();
+      return 0xBA000000;
+    case (OP.BGT):
+      bgt();
+      return 0xCA000000;
+    case (OP.BLE):
+      ble();
+      return 0xDA000000;
+    case (OP.B):
+      b();
+      return 0xEA000000;
+        //I've treated b as al
+    case (OP.LSL):
+      lsl();
+      return 0x0; //unsure
+    case (OP.ANDEQ):
+      andeq();
+      return 0x00000000;
+    default: return 0;
   }
 
 
-  int mov(State a, int const b) {
-    a.memory = (uint8_t) b;
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}
 
 
 
