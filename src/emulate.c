@@ -90,6 +90,12 @@ void setUnset(int flag, int set, State state)
   }
 }
 
+// Update flags. Pre: Set == 1
+void updateFlags(uint32_t result, int carry, State state) {
+  setUnset(N, result >> 31, state);
+  setUnset(Z, result == 0, state);
+  setUnset(C, carry, state);
+}
 
 /* Check CSPR registers against conditions set according to the first four bits of the instr.
  * Return 1 if condition is met, 0 if it is not.*/
@@ -99,9 +105,9 @@ int checkInstrCond(State state, uint32_t instr) {
 }
 
 // Return bit at given position in instr.
-int getInstrBit(uint32_t instr, int position) {
-  assert(0 <= position && position <= 31);
-  uint32_t mask = 1 << position;
+int getInstrBit(uint32_t instr, int index) {
+  assert(0 <= index && index <= 31);
+  uint32_t mask = 1 << index;
   return !((instr & mask) == 0);
 }
 
@@ -111,24 +117,55 @@ uint32_t ror(uint32_t value, uint8_t rotation) {
 }
 
 // Apply shift according to shift type.
-uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount) {
+uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, int set) {
+  assert(0 <= amount <= 32);
   int bit6 = getInstrBit(instr, 6);
   int bit5 = getInstrBit(instr, 5);
+  uint32_t result = value;
+  int carry = 0;
   if (!bit6) {
     if (!bit5) {
       // 00 lsl
-      return value << amount;
+      if (amount > 0)
+        carry = getInstrBit(value, 32 - amount);
+      result = value << amount;
+    } else {
+      // 01 lsr
+      if (amount > 1)
+        carry = getInstrBit(value, amount - 1);
+      result = value >> amount;
     }
-    // 01 lsr
-    return value >> amount;
+  } else {
+    if (!bit5) {
+      // 10 asr
+      if (amount > 1)
+        carry = getInstrBit(value, amount - 1);
+      result = value >> amount | 0xFFFFFFFF << (32 - amount);
+    } else {
+      // 11 ror
+      if (amount > 1)
+        carry = getInstrBit(value, amount - 1);
+      result = value >> amount | value << (32 - amount);
+    }
   }
-  if (!bit5) {
-    // 10 asr
-    return value >> amount | 0xFFFFFFFF << (32 - amount);
-  }
-  // 11 ror
-  return ror(value, amount);
+  if (set)
+    setUnset(C, carry, state);
+  return result;
 }
+
+// Check for overflow when performing a + b = res.
+void checkOverflow(uint32_t a, uint32_t b, uint32_t res, State state) {
+  int a31 = getInstrBit(a, 31);
+  int b31 = getInstrBit(b, 31);
+  int res31 = getInstrBit(res, 31);
+  if ((a31 && b31) || (a31 && res31) || (b31 && res31)) {
+    setUnset(C, 1, state);
+  } else {
+    setUnset(C, 0, state);
+  }
+}
+
+
 
 /*** Processing Instructions ***/
 /* All data processing instructions take the base address of the
@@ -165,7 +202,7 @@ void dataProcess(State state, uint32_t instr)
       uint8_t rs = instr & 0x00000F00;
       amount = state.registers[rs] & 0x0000000F;
     }
-    oprand2 = applyShiftType(value, instr, amount);
+    oprand2 = applyShiftType(value, instr, amount, set);
   }
 
   // Apply Opcode instructions
@@ -179,62 +216,79 @@ void dataProcess(State state, uint32_t instr)
       if (opcode1) {
         if (opcode0) {
           //1111
+        } else {
+          //1110
         }
-        //1110
+      } else {
+        if (opcode0) {
+          //1101 mov
+          state.registers[rd] = oprand2;
+        } else {
+          //1100 orr
+          state.registers[rd] = (result = state.registers[rn] | oprand2);
+        }
       }
-      if (opcode0) {
-        //1101 mov
-        state.registers[rd] = oprand2;
-        return;
+    } else {
+      if (opcode1) {
+        if (opcode0) {
+          //1011
+        } else {
+          //1010 cmp
+          result = state.registers[rn] - oprand2;
+        }
+      } else {
+        if (opcode0) {
+          //1001 teq
+          result = state.registers[rn] ^ oprand2;
+        } else {
+          //1000 tst
+          result = state.registers[rn] & oprand2;
+        }
       }
-      //1100 orr
-      state.registers[rd] = (result = state.registers[rn] | oprand2);
     }
-    if (opcode1) {
-      if (opcode0) {
-        //1011
+  } else {
+    if (opcode2) {
+      if (opcode1) {
+        if (opcode0) {
+          //0111
+        } else {
+          //0110
+        }
+      } else {
+        if (opcode0) {
+          //0101
+        } else {
+          //0100 add
+          state.registers[rd] = (result = state.registers[rn] + oprand2);
+          if (set)
+            checkOverflow(state.registers[rn], oprand2, result, state);
+        }
       }
-      //1010 cmp
-      result = state.registers[rn] - oprand2;
-    }
-    if (opcode0){
-      //1001 teq
-      result = state.registers[rn] ^ oprand2;
-    }
-    //1000 tst
-    result = state.registers[rn] & oprand2;
-  }
-  if (opcode2) {
-    if (opcode1) {
-      if (opcode0) {
-        //0111
+    } else {
+      if (opcode1) {
+        if (opcode0) {
+          //0011 rsb
+          state.registers[rd] = (result = oprand2 - state.registers[rn]);
+        } else {
+          //0010 sub
+          state.registers[rd] = (result = state.registers[rn] - oprand2);
+        }
+      } else {
+        if (opcode0) {
+          //0001 eor
+          state.registers[rd] = (result = state.registers[rn] ^ oprand2);
+        } else {
+          //0000 and
+          state.registers[rd] = (result = state.registers[rn] & oprand2);
+        }
       }
-      //0110
     }
-    if (opcode0) {
-      //0101
-    }
-    //0100 add
-    state.registers[rd] = (result = state.registers[rn] + oprand2);
   }
-  if (opcode1) {
-    if (opcode0) {
-      //0011 rsb
-      state.registers[rd] = (result = oprand2 - state.registers[rn]);
-    }
-    //0010 sub
-    state.registers[rd] = (result = state.registers[rn] - oprand2);
-  }
-  if (opcode0){
-    //0001 eor
-    state.registers[rd] = (result = state.registers[rn] ^ oprand2);
-  }
-  //0000 and
-  state.registers[rd] = (result = state.registers[rn] & oprand2);
 
-  // Set CSPR flag;
+  // Set N and Z flags;
   if (set) {
-
+    setUnset(N, result >> 31, state);
+    setUnset(Z, result == 0, state);
   }
 }
 
