@@ -24,6 +24,8 @@ int patternMatcher(uint32_t instr, uint32_t pattern, uint32_t mask);
 int checkCond(uint8_t cond, State state);
 int checkInstrCond(State state, uint32_t instr);
 int getInstrBit(uint32_t instr, int position);
+uint32_t ror(uint32_t value, uint8_t rotation);
+uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount);
 void setUnset(int flag, int set, State state);
 void dataProcess(State state, uint32_t instr);
 void multiply(State state, uint32_t instr);

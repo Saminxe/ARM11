@@ -98,10 +98,6 @@ int checkInstrCond(State state, uint32_t instr) {
   return checkCond(cond, state);
 }
 
-/*** Processing Instructions ***/
-/* All data processing instructions take the base address of the
-  memory and registers, and the instruction as arguments */
-
 // Return bit at given position in instr.
 int getInstrBit(uint32_t instr, int position) {
   assert(0 <= position && position <= 31);
@@ -109,12 +105,41 @@ int getInstrBit(uint32_t instr, int position) {
   return !((instr & mask) == 0);
 }
 
+// Rotate right cyclically with bit 0 shifting into bit 31.
+uint32_t ror(uint32_t value, uint8_t rotation) {
+  return value >> (rotation % 32) | value << ((32 - rotation) % 32);
+}
+
+// Apply shift according to shift type.
+uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount) {
+  int bit6 = getInstrBit(instr, 6);
+  int bit5 = getInstrBit(instr, 5);
+  if (!bit6) {
+    if (!bit5) {
+      // 00 lsl
+      return value << amount;
+    }
+    // 01 lsr
+    return value >> amount;
+  }
+  if (!bit5) {
+    // 10 asr
+    return value >> amount | 0xFFFFFFFF << (32 - amount);
+  }
+  // 11 ror
+  return ror(value, amount);
+}
+
+/*** Processing Instructions ***/
+/* All data processing instructions take the base address of the
+  memory and registers, and the instruction as arguments */
+
 void dataProcess(State state, uint32_t instr)
 {
-  if (!checkInstrCond(state, instr))  return; //printf("This is a data processing instruction\n");
+  if (!checkInstrCond(state, instr))  return;
+  //printf("This is a data processing instruction\n");
 
   int immediate = getInstrBit(instr, 25); // I
-  uint8_t opcode = (instr & 0x1E000000) >> 21; // OpCode
   int set = getInstrBit(instr,20); // S
   uint8_t rn = (instr & 0x000F0000) >> 16; // Rn
   uint8_t rd = (instr & 0x0000F000) >> 12; // Rd
@@ -124,28 +149,31 @@ void dataProcess(State state, uint32_t instr)
   if (immediate) {
     // Rotation amount is twice the value in the 4 bit rotation field.
     uint8_t rotate = (instr & 0x00000F00) >> 7;
-    uint32_t imm = (instr & 0x000000FF);
+    uint32_t imm = instr & 0x000000FF;
     // Rotate right by "rotate"
-    oprand2 = imm >> rotate | imm << (32 - rotate);
-  } else{
+    oprand2 = ror(imm, rotate);
+  } else {
   // If Operand2 is a register (I = 0)
-    uint8_t rm = (instr & 0x0000000F);
-    uint8_t integer;
-    uint8_t rs;
+    uint8_t rm = instr & 0x0000000F;
+    uint32_t value = state.registers[rm];
+    uint8_t amount = 0x0;
     if (!getInstrBit(instr,4)) {
-      integer = instr & 0x00000F80;
+      // Bit 4 = 0; Shift by a constant amount.
+      amount = instr & 0x00000F80;
     } else {
-      rs = instr & 0x00000F00;
+      // Bit 4 = 1; Shift specified by a register.
+      uint8_t rs = instr & 0x00000F00;
+      amount = state.registers[rs] & 0x0000000F;
     }
+    oprand2 = applyShiftType(value, instr, amount);
   }
-  // Check bit 4 to see if shift by constant amount (0) or specified by a register (1)
-  uint8_t rm = (instr & 0x000000FF);
 
-  // Opcode instructions
+  // Apply Opcode instructions
   int opcode3 = getInstrBit(instr, 24);
   int opcode2 = getInstrBit(instr, 23);
   int opcode1 = getInstrBit(instr, 22);
   int opcode0 = getInstrBit(instr, 21);
+  uint32_t result = 0x0;
   if (opcode3) {
     if (opcode2) {
       if (opcode1) {
@@ -155,25 +183,26 @@ void dataProcess(State state, uint32_t instr)
         //1110
       }
       if (opcode0) {
-        //1101
+        //1101 mov
         state.registers[rd] = oprand2;
+        return;
       }
-      //1100
-      state.registers[rd] = state.registers[rn] | oprand2;
+      //1100 orr
+      state.registers[rd] = (result = state.registers[rn] | oprand2);
     }
     if (opcode1) {
       if (opcode0) {
         //1011
       }
-      //1010
-      state.registers[rn] - oprand2;
+      //1010 cmp
+      result = state.registers[rn] - oprand2;
     }
     if (opcode0){
-      //1001
-      state.registers[rn] ^ oprand2;
+      //1001 teq
+      result = state.registers[rn] ^ oprand2;
     }
-    //1000
-    state.registers[rn] & oprand2;
+    //1000 tst
+    result = state.registers[rn] & oprand2;
   }
   if (opcode2) {
     if (opcode1) {
@@ -185,24 +214,28 @@ void dataProcess(State state, uint32_t instr)
     if (opcode0) {
       //0101
     }
-    //0100
-    state.registers[rd] = state.registers[rn] + oprand2;
+    //0100 add
+    state.registers[rd] = (result = state.registers[rn] + oprand2);
   }
   if (opcode1) {
     if (opcode0) {
-      //0011
-      state.registers[rd] = oprand2 - state.registers[rn];
+      //0011 rsb
+      state.registers[rd] = (result = oprand2 - state.registers[rn]);
     }
-    //0010
-    state.registers[rd] = state.registers[rn] - oprand2;
+    //0010 sub
+    state.registers[rd] = (result = state.registers[rn] - oprand2);
   }
   if (opcode0){
-    //0001
-    state.registers[rd] = state.registers[rn] ^ oprand2;
+    //0001 eor
+    state.registers[rd] = (result = state.registers[rn] ^ oprand2);
   }
-  //0000
-  state.registers[rd] = state.registers[rn] & oprand2;
+  //0000 and
+  state.registers[rd] = (result = state.registers[rn] & oprand2);
 
+  // Set CSPR flag;
+  if (set) {
+
+  }
 }
 
 void multiply(State state, uint32_t instr)
