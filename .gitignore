@@ -2,6 +2,7 @@
 
 #ignore temp files
 *~
+*.xml
 
 #ignore pdf files (just keep source files)
 *.pdf

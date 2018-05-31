@@ -118,7 +118,7 @@ uint32_t ror(uint32_t value, uint8_t rotation) {
 }
 
 // Apply shift according to shift type.
-uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, State state) {
+uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, int set, State state) {
   assert(0 <= amount && amount <= 32);
   int bit6 = getInstrBit(instr, 6);
   int bit5 = getInstrBit(instr, 5);
@@ -149,6 +149,8 @@ uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, State st
       result = value >> amount | value << (32 - amount);
     }
   }
+  if (set)
+    setUnset(C, carry, state);
   return result;
 }
 
@@ -176,21 +178,11 @@ void checkBorrow(uint32_t a, uint32_t b, uint32_t res, State state) {
   }
 }
 
-void treatAsShiftRegister(State state, uint32_t instr)
-{
-  uint32_t oprand2 = (instr & 0x00000FFF); // Operand2
-  uint8_t rm = instr & 0x0000000F;
-  uint32_t value = state.registers[rm];
-  uint8_t amount = 0x0;
-  if (!getInstrBit(instr,4)) {
-      // Bit 4 = 0; Shift by a constant amount.
-      amount = instr & 0x00000F80;
-  } else {
-      // Bit 4 = 1; Shift specified by a register.
-      uint8_t rs = instr & 0x00000F00;
-      amount = state.registers[rs] & 0x0000000F;
-  }
-  oprand2 = applyShiftType(value, instr, amount, state);
+uint32_t endianConversion(uint32_t num) {
+  return ((num >> 24) & 0xff) |
+      ((num << 8) & 0xff0000) |
+      ((num >> 8) & 0xff00) |
+      ((num << 24) & 0xff000000);
 }
 
 /*** Processing Instructions ***/
@@ -217,9 +209,18 @@ void dataProcess(State state, uint32_t instr)
     oprand2 = ror(imm, rotate);
   } else {
   // If Operand2 is a register (I = 0)
-    treatAsShiftRegister(state, instr);
-    if (set)
-      setUnset(C, carry, state);
+    uint8_t rm = instr & 0x0000000F;
+    uint32_t value = state.registers[rm];
+    uint8_t amount = 0x0;
+    if (!getInstrBit(instr,4)) {
+      // Bit 4 = 0; Shift by a constant amount.
+      amount = instr & 0x00000F80;
+    } else {
+      // Bit 4 = 1; Shift specified by a register.
+      uint8_t rs = instr & 0x00000F00;
+      amount = state.registers[rs] & 0x0000000F;
+    }
+    oprand2 = applyShiftType(value, instr, amount, set, state);
   }
 
   // Apply Opcode instructions
@@ -337,36 +338,61 @@ void multiply(State state, uint32_t instr)
 }
 
 //If tests do not work, try casting shifted ints instead of directly assigning types?
+
 void singleDataTransfer(State state, uint32_t instr)
 {
   printf("This is an SDT instruction\n");
-  if (checkInstrCond(state, instr)) {
-    uint16_t offset = (instr << 20) >> 4;
-    uint32_t RnRdOffset = (instr << 12) >> 12;
-    uint8_t RnRd = RnRdOffset >> 12;
-    uint8_t Rn = RnRd >> 4;
-    uint8_t Rd = (RnRd << 4) >> 4;
-    if (getInstrBit(instr, 25) == 1) {
-      // I = 1; interpret offset as shifted register
-      treatAsShiftRegister(state, instr);
+  if (!checkInstrCond(state, instr)) return;
+  uint32_t RnRdOffset = (instr << 12) >> 12;
+  uint8_t RnRd = RnRdOffset >> 12;
+  uint8_t Rn = RnRd >> 4;
+  uint8_t Rd = (RnRd << 4) >> 4;
+  uint32_t offset;
+  if (getInstrBit(instr, 25) == 1) {
+    // I = 1; interpret offset as shifted register
+    uint8_t rm = instr & 0x0000000F;
+    uint32_t value = state.registers[rm];
+    uint8_t amount = 0x0;
+    if (!getInstrBit(instr,4)) {
+      // Bit 4 = 0; Shift by a constant amount.
+      amount = instr & 0x00000F80;
     } else {
-      // I = 0; interpret offset as unsigned immediate offset
+      // Bit 4 = 1; Shift specified by a register.
+      uint8_t rs = instr & 0x00000F00;
+      amount = state.registers[rs] & 0x0000000F;
     }
+    offset = applyShiftType(value, instr, amount, 0, state);
+  } else {
+    // I = 0; interpret offset as unsigned immediate offset
+    offset = (instr << 20) >> 20;
+  }
+  uint32_t tempReg = state.registers[Rn];
+  if (getInstrBit(instr, 23) == 1) {
+    // U = 1; offset added to base register
+    tempReg += offset;
+  } else {
+    // U = 0; offset subtracted from base register
+    tempReg -= offset;
+  }
+  if (getInstrBit(instr, 20) == 1) {
+    // L = 1; word loaded from memory
     if (getInstrBit(instr, 24) == 1) {
       // P = 1; offset is added/subtracted to base register before transferring data
+      state.registers[Rd] = endianConversion(state.memory[tempReg]);
     } else {
       // P = 0; offset is added/subtracted to base register after transferring data
+      state.registers[Rd] = endianConversion(state.memory[state.registers[Rn]]);
+      state.registers[Rn] = tempReg;
     }
-    if (getInstrBit(instr, 23) == 1) {
-      // U = 1; offset added to base register
+  } else {
+    // L = 0; word stored into memory
+    if (getInstrBit(instr, 24) == 1) {
+      // P = 1; offset is added/subtracted to base register before transferring data
+      state.memory[tempReg] = endianConversion(state.registers[Rd]);
     } else {
-      // U = 0; offset subtracted from base register
-    }
-
-    if (getInstrBit(instr, 20) == 1) {
-      // L = 1; word loaded from memory
-    } else {
-      // L = 0; word stored into memory
+      // P = 0; offset is added/subtracted to base register after transferring data
+      state.memory[state.registers[Rn]] = endianConversion(state.registers[Rd]);
+      state.registers[Rn] = tempReg;
     }
   }
 }
