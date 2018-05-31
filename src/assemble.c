@@ -141,7 +141,7 @@ enum mneumonic {ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR,
 
 //the code below is subject to change depending if we actually need to keep track of
 // the instruction format, available addressing modes and length information
-
+/*
 //OPTAB (operation code table)
 int OPMap(State state, uint32_t instr)
 {
@@ -173,3 +173,4 @@ int OPMap(State state, uint32_t instr)
     default:    return 0;
   }
 }
+*/
