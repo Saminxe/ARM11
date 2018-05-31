@@ -118,7 +118,7 @@ uint32_t ror(uint32_t value, uint8_t rotation) {
 }
 
 // Apply shift according to shift type.
-uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, int set, State state) {
+uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, State state) {
   assert(0 <= amount && amount <= 32);
   int bit6 = getInstrBit(instr, 6);
   int bit5 = getInstrBit(instr, 5);
@@ -149,8 +149,6 @@ uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, int set,
       result = value >> amount | value << (32 - amount);
     }
   }
-  if (set)
-    setUnset(C, carry, state);
   return result;
 }
 
@@ -180,7 +178,6 @@ void checkBorrow(uint32_t a, uint32_t b, uint32_t res, State state) {
 
 void treatAsShiftRegister(State state, uint32_t instr)
 {
-  int set = getInstrBit(instr, 20); // S
   uint32_t oprand2 = (instr & 0x00000FFF); // Operand2
   uint8_t rm = instr & 0x0000000F;
   uint32_t value = state.registers[rm];
@@ -193,7 +190,7 @@ void treatAsShiftRegister(State state, uint32_t instr)
       uint8_t rs = instr & 0x00000F00;
       amount = state.registers[rs] & 0x0000000F;
   }
-  oprand2 = applyShiftType(value, instr, amount, set, state);
+  oprand2 = applyShiftType(value, instr, amount, state);
 }
 
 /*** Processing Instructions ***/
@@ -221,6 +218,8 @@ void dataProcess(State state, uint32_t instr)
   } else {
   // If Operand2 is a register (I = 0)
     treatAsShiftRegister(state, instr);
+    if (set)
+      setUnset(C, carry, state);
   }
 
   // Apply Opcode instructions
