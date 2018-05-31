@@ -9,7 +9,7 @@
 #define CSPR 16
 
 typedef struct {
-  char *name;
+  char name[20];
   uint8_t val;
 } Symbol;
 

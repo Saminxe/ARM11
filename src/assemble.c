@@ -4,7 +4,7 @@
 void printSymtab(SymbolTable s) {
   int i = 0;
   do {
-    printf("%s, %u", s.symbols[i].name, s.symbols[i].val);
+    printf("%s, %u\n", s.symbols[i].name, s.symbols[i].val);
     i++;
   } while (i < s.size);
 }
@@ -29,6 +29,7 @@ int main(int argc, char **argv)
   char *buffer = calloc(BUFFER_SIZE, sizeof(char));
   uint8_t locctr = 0; // Starting address for memory allocations
   SymbolTable symtab = {0, calloc(DEFAULT_MAP_SIZE, sizeof(Symbol))};
+  int size = 0; // Current pointer for symtab
 
   /* Tests for correct amount of input variables */
   if (argc != 3) {
@@ -57,8 +58,10 @@ int main(int argc, char **argv)
           fprintf(stderr, "Duplicate symbol, aborting assembly.\n");
           return -1;
         } else {
-          Symbol new = {opcode, locctr};
-          symtabAdd(symtab, new);
+          strcpy(symtab.symbols[size].name, opcode);
+          symtab.symbols[size].val = locctr;
+          size++;
+          symtab.size = size;
         }
       } else if (optab(opcode)) {
         printf("Opcode = %s, Operands = %s\n", opcode, operands);
@@ -68,7 +71,6 @@ int main(int argc, char **argv)
       }
     }
   }
-
 
   printSymtab(symtab);
 
@@ -92,13 +94,6 @@ int symtabContains(SymbolTable m, char *k)
       return 1;
   }
   return 0;
-}
-
-void symtabAdd(SymbolTable m, Symbol e)
-{
-  printf("Adding %s, %u\n", e.name, e.val);
-  m.symbols[m.size] = e;
-  m.size++;
 }
 
 uint8_t getKeyVal(SymbolTable m, char *k) {
