@@ -76,6 +76,13 @@ int main(int argc, char **argv)
 
   /* Translation Loop */
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
+    char *opcode = strtok(buffer, " ");
+    char *operands = strtok(NULL, " ");
+    if(*opcode != ';') {
+      if (OPTABcheck(opcode)) {
+        if ()
+      }
+    }
 
   }
 
@@ -157,24 +164,18 @@ int OPTAB(char* a)
     return 0x4100000;
   } else  if(equals(a, "str")){
     return 0x4000000;
-  } else  if(equals(a, "beq")){
-    return 0xA000000;
-  } else  if(equals(a, "bne")){
-    return 0x1A000000;
-  } else  if(equals(a, "bge")){
-    return 0xAA000000;
-  } else  if(equals(a, "blt")){
-    return 0xBA000000;
-  } else  if(equals(a, "bgt")){
-    return 0xCA000000;
-  } else  if(equals(a, "ble")){
-    return 0xDA000000;
   } else  if(equals(a, "b")){
     return 0xEA000000;
   } else  if(equals(a, "lsl")){
-    return 0x0;                 //unsure
-  } else  if(equals(a, "andeq")){
-    return 0x0;                 //unsure what for this
+    return 0x1A00000;           //unsure
   }
+  return -1;
+}
+
+int OPTABcheck(char* a) {
+  if(OPTAB(a) != -1) {
+    return 1;
+  }
+  return 0;
 }
 */
