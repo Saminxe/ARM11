@@ -464,16 +464,19 @@ void process(State state)
         state.memory[state.registers[PC] + 3] << 24;
       state.registers[PC] += 4;
     } else if (isFetched && isDecoded) {
-      if (patternMatcher(decoded, MULTIPLY_PATTERN, MULTIPLY_MASK))
-        multiply(state, decoded);
-      else if (patternMatcher(decoded, DATA_PROCESS_PATTERN, DATA_PROCESS_MASK))
-        dataProcess(state, decoded);
-      else if (patternMatcher(decoded, SDT_PATTERN, SDT_MASK))
-        singleDataTransfer(state, decoded);
-      else if (patternMatcher(decoded, BRANCH_PATTERN, BRANCH_MASK))
+      if (patternMatcher(decoded, BRANCH_PATTERN, BRANCH_MASK)) {
         branchDataTransfer(state, decoded);
-      else printf("not a valid instruction u schmuck\n");
-      decoded = fetched;
+        isDecoded = 0;
+      } else {
+        if (patternMatcher(decoded, MULTIPLY_PATTERN, MULTIPLY_MASK))
+          multiply(state, decoded);
+        else if (patternMatcher(decoded, DATA_PROCESS_PATTERN, DATA_PROCESS_MASK))
+          dataProcess(state, decoded);
+        else if (patternMatcher(decoded, SDT_PATTERN, SDT_MASK))
+          singleDataTransfer(state, decoded);
+        else printf("not a valid instruction u schmuck\n");
+        decoded = fetched;
+      }
       fetched = state.memory[state.registers[PC]] |
         state.memory[state.registers[PC] + 1] << 8 |
         state.memory[state.registers[PC] + 2] << 16 |
