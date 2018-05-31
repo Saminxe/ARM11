@@ -268,6 +268,7 @@ void dataProcess(State state, uint32_t instr)
         } else {
           //1010 cmp
           result = state.registers[rn] - oprand2;
+          printf("%d\n", result);
           if (set)
             checkBorrow(state.registers[rn], oprand2, result, state);
         }
