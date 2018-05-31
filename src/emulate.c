@@ -180,7 +180,8 @@ void checkBorrow(uint32_t a, uint32_t b, uint32_t res, State state) {
 
 void treatAsShiftRegister(State state, uint32_t instr)
 {
-  int set = getInstrBit(instr,20); // S
+  int set = getInstrBit(instr, 20); // S
+  uint32_t oprand2 = (instr & 0x00000FFF); // Operand2
   uint8_t rm = instr & 0x0000000F;
   uint32_t value = state.registers[rm];
   uint8_t amount = 0x0;
@@ -348,8 +349,7 @@ void singleDataTransfer(State state, uint32_t instr)
     uint8_t Rd = (RnRd << 4) >> 4;
     if (getInstrBit(instr, 25) == 1) {
       // I = 1; interpret offset as shifted register
-
-
+      treatAsShiftRegister(state, instr);
     } else {
       // I = 0; interpret offset as unsigned immediate offset
     }
