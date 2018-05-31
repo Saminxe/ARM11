@@ -72,6 +72,28 @@ int main(int argc, char **argv)
 
   printSymtab(symtab);
 
+
+  //operation code table
+  int OPTAB() {
+
+  }
+
+
+  //location counter
+  int LOCCTR() {
+
+  }
+
+
+  //symbol table
+  int SYMTAB() {
+
+  }
+
+
+
+
+
   /* Translation Loop */
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
 
@@ -142,183 +164,46 @@ int equals(char* a, char* b)
 }
 
 
+
+enum mneumonic {ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR, STR, BEQ, BNE, BGE, BLT, BGT, BLE, B, LSL, ANDEQ};
+
+
+//the code below is subject to change depending if we actually need to keep track of
+// the instruction format, available addressing modes and length information
+
 //OPTAB (operation code table)
 int OPMap(State state, uint32_t instr)
 {
-  uint8_t opcode = (instr & 0x1E000000) >> 21; // OpCode
-  uint8_t rn = (instr & 0x000F0000) >> 16; // Rn
-  uint8_t rd = (instr & 0x0000F000) >> 12; // Rd
-  uint32_t oprand2 = (instr & 0x00000FFF); // Operand2
-  uint8_t rm = (instr & 0x000000FF); //Rm
-  uint8_t rs = (instr & 0x00000F00); //Rs
-
-  void add() {
-    state.registers[rd] = state.registers[rn] + state.registers[oprand2];
-  }
-
-  void mov() {
-    state.registers[rd] = state.registers[opcode];
-  }
-
-  void adn() {
-    state.registers[rd] = state.registers[rn] & state.registers[opcode];
-  }
-
-  void eor() {
-    state.registers[rd] = state.registers[rn] ^ state.registers[opcode];
-  }
-
-  void sub() {
-    state.registers[rd] = state.registers[rn] - state.registers[opcode];
-  }
-
-  void rsb() {
-    state.registers[rd] = state.registers[opcode] - state.registers[rn];
-  }
-
-  void orr() {
-    state.registers[rd] = state.registers[rn] | state.registers[opcode];
-  }
-
-  void tst() {
-    state.registers[CSPR] = state.registers[rn] & state.registers[opcode];
-  }
-
-  void teq() {
-    state.registers[CSPR] = state.registers[rn] ^ state.registers[opcode];
-  }
-
-  void cmp() {
-    state.registers[CSPR] = state.registers[rn] - state.registers[opcode];
-  }
-
-  void mul() {
-    state.registers[rd] = state.registers[rm] * state.registers[rs];
-  }
-
-  void mla() {
-    mul() + state.registers[rn];
-  }
-
-  void ldr() {
-    if(instr < 0xFF) {
-      move();
-    }
-    state.registers[rd] = state.memory;
-  }
-
-  void str() {
-    state.memory = state.registers[rd];
-  }
-
-  void beq() {
-    state.registers[PC] = state.memory;
-  }
-
-  void bne() {
-    state.registers[PC] = state.memory;
-  }
-
-  void bge() {
-    state.registers[PC] = state.memory;
-  }
-
-  void blt() {
-    state.registers[PC] = state.memory;
-  }
-
-  void bgt() {
-    state.registers[PC] = state.memory;
-  }
-
-  void ble() {
-    state.registers[PC] = state.memory;
-  }
-
-  void b() {
-    state.registers[PC] = state.memory;
-  }
-
-  void lsl() {
-    state.registers[rd] = state.registers[rd] << 0; //shifted left but no clue how much
-  }
-
-  void andeq() {
-  }
-
-  switch(instr) {
-    case (OP.ADD):
-      add(state);
-      return 0x800000;
-    case (OP.SUB):
-      sub(state);
-      return 0x400000;
-    case (OP.RSB):
-      rsb(state);
-      return 0x600000;
-    case (OP.AND):
-      adn(state);
-      return 0x0;
-    case (OP.EOR):
-      eor(state);
-      return 0x200000;
-    case (OP.ORR):
-      orr(state);
-      return 0x1800000;
-    case (OP.MOV):
-      mov(state, instr);
-      return 0x1A00000;
-    case (OP.TST):
-      tst();
-      return 0x1000000;
-    case (OP.TEQ):
-      teq();
-      return 0x1200000;
-    case (OP.CMP):
-      cmp();
-      return 0x1400000;
-    case (OP.MUL):
-      mul();
-      return 0xE0000090;
-    case (OP.MLA):
-      mla();
-      return 0xE0200090;
-    case (OP.LDR):
-      ldr();
-      return 0x4100000;
-    case (OP.STR):
-      str();
-      return 0x4000000;
-    case (OP.BEQ):
-      beq();
-      return 0xA000000;
-    case (OP.BNE):
-      bne();
-      return 0x1A000000;
-    case (OP.BGE):
-      bge();
-      return 0xAA000000;
-    case (OP.BLT):
-      blt();
-      return 0xBA000000;
-    case (OP.BGT):
-      bgt();
-      return 0xCA000000;
-    case (OP.BLE):
-      ble();
-      return 0xDA000000;
-    case (OP.B):
-      b();
-      return 0xEA000000;
+  switch(mneumonic) {
+    case (ADD): return 0x800000;
+    case (SUB): return 0x400000;
+    case (RSB): return 0x600000;
+    case (AND): return 0x0;
+    case (EOR): return 0x200000;
+    case (ORR): return 0x1800000;
+    case (MOV): return 0x1A00000;
+    case (TST): return 0x1000000;
+    case (TEQ): return 0x1200000;
+    case (CMP): return 0x1400000;
+    case (MUL): return 0xE0000090;
+    case (MLA): return 0xE0200090;
+    case (LDR): return 0x4100000;
+    case (STR): return 0x4000000;
+    case (BEQ): return 0xA000000;
+    case (BNE): return 0x1A000000;
+    case (BGE): return 0xAA000000;
+    case (BLT): return 0xBA000000;
+    case (BGT): return 0xCA000000;
+    case (BLE): return 0xDA000000;
+    case (B):   return 0xEA000000;
         //I've treated b as al
-    case (OP.LSL):
-      lsl();
-      return 0x0; //unsure
-    case (OP.ANDEQ):
-      andeq();
-      return 0x00000000;
-    default: return 0;
+    case (LSL): return 0x0; //unsure
+    case (ANDEQ): return 0x00000000;
+    default:    return 0;
   }
-
-
 }
+
+
+
+
+
