@@ -103,18 +103,6 @@ uint8_t getKeyVal(SymbolTable m, char *k) {
 }
 
 
-//int branchInstruction() {
-//  char[](label);
-//  label =
-//}
-
-
-
-
-
-
-
-
 //don't touch this Sam is writing bad code
 
 //check if strings are equals
@@ -136,7 +124,7 @@ int equals(char* a, char* b)
 
 
 
-enum mneumonic {ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR, STR, BEQ, BNE, BGE, BLT, BGT, BLE, B, LSL, ANDEQ};
+enum mneumonic {ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR, STR, BEQ, BNE, BGE, BLT, BGT, BLE, B, LSL, ANDEQ}states;
 
 
 //the code below is subject to change depending if we actually need to keep track of
@@ -145,7 +133,7 @@ enum mneumonic {ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR,
 //OPTAB (operation code table)
 int OPMap(State state, uint32_t instr)
 {
-  switch(mneumonic) {
+  switch(states) {
     case (ADD): return 0x800000;
     case (SUB): return 0x400000;
     case (RSB): return 0x600000;

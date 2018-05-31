@@ -99,6 +99,7 @@ void updateFlags(uint32_t result, int carry, State state) {
 
 /* Check CSPR registers against conditions set according to the first four bits of the instr.
  * Return 1 if condition is met, 0 if it is not.*/
+// If tests do not work, try casting cond to a uint8_t?
 int checkInstrCond(State state, uint32_t instr) {
   uint8_t cond = instr >> 28;
   return checkCond(cond, state);
@@ -177,6 +178,24 @@ void checkBorrow(uint32_t a, uint32_t b, uint32_t res, State state) {
   }
 }
 
+void treatAsShiftRegister(State state, uint32_t instr)
+{
+  int set = getInstrBit(instr, 20); // S
+  uint32_t oprand2 = (instr & 0x00000FFF); // Operand2
+  uint8_t rm = instr & 0x0000000F;
+  uint32_t value = state.registers[rm];
+  uint8_t amount = 0x0;
+  if (!getInstrBit(instr,4)) {
+      // Bit 4 = 0; Shift by a constant amount.
+      amount = instr & 0x00000F80;
+  } else {
+      // Bit 4 = 1; Shift specified by a register.
+      uint8_t rs = instr & 0x00000F00;
+      amount = state.registers[rs] & 0x0000000F;
+  }
+  oprand2 = applyShiftType(value, instr, amount, set, state);
+}
+
 /*** Processing Instructions ***/
 /* All data processing instructions take the base address of the
   memory and registers, and the instruction as arguments */
@@ -201,18 +220,7 @@ void dataProcess(State state, uint32_t instr)
     oprand2 = ror(imm, rotate);
   } else {
   // If Operand2 is a register (I = 0)
-    uint8_t rm = instr & 0x0000000F;
-    uint32_t value = state.registers[rm];
-    uint8_t amount = 0x0;
-    if (!getInstrBit(instr,4)) {
-      // Bit 4 = 0; Shift by a constant amount.
-      amount = instr & 0x00000F80;
-    } else {
-      // Bit 4 = 1; Shift specified by a register.
-      uint8_t rs = instr & 0x00000F00;
-      amount = state.registers[rs] & 0x0000000F;
-    }
-    oprand2 = applyShiftType(value, instr, amount, set, state);
+    treatAsShiftRegister(state, instr);
   }
 
   // Apply Opcode instructions
@@ -329,9 +337,39 @@ void multiply(State state, uint32_t instr)
   }
 }
 
+//If tests do not work, try casting shifted ints instead of directly assigning types?
 void singleDataTransfer(State state, uint32_t instr)
 {
   printf("This is an SDT instruction\n");
+  if (checkInstrCond(state, instr)) {
+    uint16_t offset = (instr << 20) >> 4;
+    uint32_t RnRdOffset = (instr << 12) >> 12;
+    uint8_t RnRd = RnRdOffset >> 12;
+    uint8_t Rn = RnRd >> 4;
+    uint8_t Rd = (RnRd << 4) >> 4;
+    if (getInstrBit(instr, 25) == 1) {
+      // I = 1; interpret offset as shifted register
+      treatAsShiftRegister(state, instr);
+    } else {
+      // I = 0; interpret offset as unsigned immediate offset
+    }
+    if (getInstrBit(instr, 24) == 1) {
+      // P = 1; offset is added/subtracted to base register before transferring data
+    } else {
+      // P = 0; offset is added/subtracted to base register after transferring data
+    }
+    if (getInstrBit(instr, 23) == 1) {
+      // U = 1; offset added to base register
+    } else {
+      // U = 0; offset subtracted from base register
+    }
+
+    if (getInstrBit(instr, 20) == 1) {
+      // L = 1; word loaded from memory
+    } else {
+      // L = 0; word stored into memory
+    }
+  }
 }
 
 void branchDataTransfer(State state, uint32_t instr)
