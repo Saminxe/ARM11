@@ -38,6 +38,21 @@ void condChecks(State state, uint32_t cpsrState)
   printf("Code 1101 returns %d\n", checkCond(0xD, state));
   printf("Code 1110 returns %d\n\n", checkCond(0xE, state));
 }
+
+void output(State state)
+{
+  int i = 0;
+  printf("Registers: \n");
+  for (int j = 0; j < 13; j++)
+    printf("$%d: %8d (0x%08x)\n", j, state.registers[j], state.registers[j]);
+  printf("PC: %8d (0x%08x)\n", state.registers[PC], state.registers[PC]);
+  printf("CPSR: %8d (0x%08x)\n", state.registers[CPSR], state.registers[CPSR]);
+  printf("Non-zero memory: \n");
+  do {
+    printf("%d: %02x\n", i, state.memory[i]);
+    i++;
+  } while ((state.memory[i] != 0) && (i < 65536));
+}
 /*** End of debugging tools ***/
 
 /*** Generic pattern matcher ***/
@@ -192,7 +207,7 @@ uint32_t endianConversion(uint32_t num) {
 void dataProcess(State state, uint32_t instr)
 {
   if (!checkInstrCond(state, instr))  return;
-  //printf("This is a data processing instruction\n");
+  printf("This is a data processing instruction\n");
 
   int immediate = getInstrBit(instr, 25); // I
   int set = getInstrBit(instr,20); // S
@@ -318,6 +333,7 @@ void dataProcess(State state, uint32_t instr)
 
 void multiply(State state, uint32_t instr)
 {
+  printf("This is a multiply instruction\n");
   int acc = (instr & 0x00200000) >> 21;
   int set = (instr & 0x00100000) >> 20;
   uint8_t rd = (instr & 0x000F0000) >> 16;
@@ -423,28 +439,52 @@ void process(State state)
   const uint32_t MULTIPLY_PATTERN = 0x00000090;
   const uint32_t MULTIPLY_MASK = 0x0FC00090;
   const uint32_t SDT_PATTERN = 0x04000000;
-  const uint32_t SDT_MASK = 0x0C060000;
+  const uint32_t SDT_MASK = 0x0C600000;
   const uint32_t BRANCH_PATTERN = 0x0A000000;
   const uint32_t BRANCH_MASK = 0x0F000000;
+  int isFetched = 0;
+  int isDecoded = 0;
+  uint32_t fetched = 0;
+  uint32_t decoded = 1;
+
   do {
-    uint32_t instr = state.memory[state.registers[PC]] |
-      state.memory[state.registers[PC] + 1] << 8 |
-      state.memory[state.registers[PC] + 2] << 16 |
-      state.memory[state.registers[PC] + 3] << 24;
+    if (!isFetched && !isDecoded) {
+      fetched = state.memory[state.registers[PC]] |
+        state.memory[state.registers[PC] + 1] << 8 |
+        state.memory[state.registers[PC] + 2] << 16 |
+        state.memory[state.registers[PC] + 3] << 24;
+      state.registers[PC] += 4;
+      isFetched++;
+    } else if (isFetched && !isDecoded) {
+      decoded = fetched;
+      isDecoded++;
+      fetched = state.memory[state.registers[PC]] |
+        state.memory[state.registers[PC] + 1] << 8 |
+        state.memory[state.registers[PC] + 2] << 16 |
+        state.memory[state.registers[PC] + 3] << 24;
+      state.registers[PC] += 4;
+    } else if (isFetched && isDecoded) {
+      if (patternMatcher(decoded, MULTIPLY_PATTERN, MULTIPLY_MASK))
+        multiply(state, decoded);
+      else if (patternMatcher(decoded, DATA_PROCESS_PATTERN, DATA_PROCESS_MASK))
+        dataProcess(state, decoded);
+      else if (patternMatcher(decoded, SDT_PATTERN, SDT_MASK))
+        singleDataTransfer(state, decoded);
+      else if (patternMatcher(decoded, BRANCH_PATTERN, BRANCH_MASK))
+        branchDataTransfer(state, decoded);
+      else printf("not a valid instruction u schmuck\n");
+      decoded = fetched;
+      fetched = state.memory[state.registers[PC]] |
+        state.memory[state.registers[PC] + 1] << 8 |
+        state.memory[state.registers[PC] + 2] << 16 |
+        state.memory[state.registers[PC] + 3] << 24;
+      state.registers[PC] += 4;
+    }
+
     //printf("%x\n", instr);
-    state.registers[PC] += 4;
-    if (instr == 0) break;
-    else if (patternMatcher(instr, MULTIPLY_PATTERN, MULTIPLY_MASK))
-      multiply(state, instr);
-    else if (patternMatcher(instr, DATA_PROCESS_PATTERN, DATA_PROCESS_MASK))
-      dataProcess(state, instr);
-    else if (patternMatcher(instr, SDT_PATTERN, SDT_MASK))
-      singleDataTransfer(state, instr);
-    else if (patternMatcher(instr, BRANCH_PATTERN, BRANCH_MASK))
-      branchDataTransfer(state, instr);
-    else printf("not a valid instruction u schmuck\n");
-    printState(state);
-  } while (state.registers[PC] < 65536);
+
+  } while (state.registers[PC] < 65536 && decoded != 0);
+
 }
 
 int main(int argc, char **argv)
@@ -503,6 +543,7 @@ int main(int argc, char **argv)
 */
 
   /* End of debugging*/
+  output(state);
 
   free(state.memory);
   free(state.registers);
