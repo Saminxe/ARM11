@@ -123,42 +123,58 @@ int equals(char* a, char* b)
 }
 
 
-
-enum mneumonic {ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR, STR, BEQ, BNE, BGE, BLT, BGT, BLE, B, LSL, ANDEQ}states;
-
-
 //the code below is subject to change depending if we actually need to keep track of
 // the instruction format, available addressing modes and length information
 /*
 //OPTAB (operation code table)
-int OPMap(State state, uint32_t instr)
+int OPTAB(char* a)
 {
-  switch(states) {
-    case (ADD): return 0x800000;
-    case (SUB): return 0x400000;
-    case (RSB): return 0x600000;
-    case (AND): return 0x0;
-    case (EOR): return 0x200000;
-    case (ORR): return 0x1800000;
-    case (MOV): return 0x1A00000;
-    case (TST): return 0x1000000;
-    case (TEQ): return 0x1200000;
-    case (CMP): return 0x1400000;
-    case (MUL): return 0xE0000090;
-    case (MLA): return 0xE0200090;
-    case (LDR): return 0x4100000;
-    case (STR): return 0x4000000;
-    case (BEQ): return 0xA000000;
-    case (BNE): return 0x1A000000;
-    case (BGE): return 0xAA000000;
-    case (BLT): return 0xBA000000;
-    case (BGT): return 0xCA000000;
-    case (BLE): return 0xDA000000;
-    case (B):   return 0xEA000000;
-        //I've treated b as al
-    case (LSL): return 0x0; //unsure
-    case (ANDEQ): return 0x00000000;
-    default:    return 0;
+  if(equals(a, "add")) {
+    return 0x800000;
+  } else  if(equals(a, "sub")){
+    return 0x400000;
+  } else  if(equals(a, "rsb")){
+    return 0x600000;
+  } else  if(equals(a, "and")){
+    return 0x0;
+  } else  if(equals(a, "eor")){
+    return 0x200000;
+  } else  if(equals(a, "orr")){
+    return 0x1800000;
+  } else  if(equals(a, "mov")){
+    return 0x1A00000;
+  } else  if(equals(a, "tst")){
+    return 0x1000000;
+  } else  if(equals(a, "teq")){
+    return 0x1200000;
+  } else  if(equals(a, "cmp")){
+    return 0x1400000;
+  } else  if(equals(a, "mul")){
+    return 0xE0000090;
+  } else  if(equals(a, "mla")){
+    return 0xE0200090;
+  } else  if(equals(a, "ldr")){
+    return 0x4100000;
+  } else  if(equals(a, "str")){
+    return 0x4000000;
+  } else  if(equals(a, "beq")){
+    return 0xA000000;
+  } else  if(equals(a, "bne")){
+    return 0x1A000000;
+  } else  if(equals(a, "bge")){
+    return 0xAA000000;
+  } else  if(equals(a, "blt")){
+    return 0xBA000000;
+  } else  if(equals(a, "bgt")){
+    return 0xCA000000;
+  } else  if(equals(a, "ble")){
+    return 0xDA000000;
+  } else  if(equals(a, "b")){
+    return 0xEA000000;
+  } else  if(equals(a, "lsl")){
+    return 0x0;                 //unsure
+  } else  if(equals(a, "andeq")){
+    return 0x0;                 //unsure what for this
   }
 }
 */
