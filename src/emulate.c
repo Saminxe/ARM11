@@ -140,7 +140,7 @@ uint32_t ror(uint32_t value, uint8_t rotation) {
 
 // Apply shift according to shift type.
 uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, int set, State state) {
-  assert(0 <= amount && amount <= 32);
+  if(!(0 <= amount && amount <= 32)) printf("Amount: %d/n", amount);
   int bit6 = getInstrBit(instr, 6);
   int bit5 = getInstrBit(instr, 5);
   uint32_t result = value;
@@ -231,13 +231,13 @@ void dataProcess(State state, uint32_t instr)
   // If Operand2 is a register (I = 0)
     uint8_t rm = instr & 0x0000000F;
     uint32_t value = state.registers[rm];
-    uint8_t amount = 0x0;
+    uint8_t amount = 0;
     if (!getInstrBit(instr,4)) {
       // Bit 4 = 0; Shift by a constant amount.
-      amount = instr & 0x00000F80;
+      amount = (instr & 0x00000F80) >> 7;
     } else {
-      // Bit 4 = 1; Shift specified by a register.
-      uint8_t rs = instr & 0x00000F00;
+      // Bit 4 = 1; Shift specified by the bottom byte of Rs.
+      uint8_t rs = (instr & 0x00000F00) >> 8;
       amount = state.registers[rs] & 0x000000FF;
     }
     oprand2 = applyShiftType(value, instr, amount, set, state);
@@ -372,10 +372,10 @@ void singleDataTransfer(State state, uint32_t instr)
     uint8_t amount = 0x0;
     if (!getInstrBit(instr,4)) {
       // Bit 4 = 0; Shift by a constant amount.
-      amount = instr & 0x00000F80;
+      amount = (instr & 0x00000F80) >> 7;
     } else {
       // Bit 4 = 1; Shift specified by the bottom byte of Rs.
-      uint8_t rs = instr & 0x00000F00;
+      uint8_t rs = (instr & 0x00000F00) >> 8;
       amount = state.registers[rs] & 0x000000FF;
     }
     offset = applyShiftType(value, instr, amount, 0, state);
@@ -450,7 +450,6 @@ void branchDataTransfer(State state, uint32_t instr)
   }
   //printf("%d\n", offset);
   state.registers[PC] += offset;
-  //state.registers = (uint32_t*) PC;
 }
 
 /*** Pipeline ***/
