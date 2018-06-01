@@ -210,7 +210,7 @@ uint32_t endianConversion(uint32_t num) {
 
 void dataProcess(State state, uint32_t instr)
 {
-  printf("This is a data processing instruction\n");
+  //printf("This is a data processing instruction\n");
 
   int immediate = getInstrBit(instr, 25); // I
   int set = getInstrBit(instr,20); // S
@@ -271,7 +271,7 @@ void dataProcess(State state, uint32_t instr)
         } else {
           //1010 cmp
           result = state.registers[rn] - oprand2;
-          printf("%d\n", result);
+          //printf("%d\n", result);
           if (set)
             checkBorrow(state.registers[rn], oprand2, result, state);
         }
@@ -420,15 +420,16 @@ void singleDataTransfer(State state, uint32_t instr)
 
 void branchDataTransfer(State state, uint32_t instr)
 {
-  printf("This is a branch instruction\n");
-     int32_t offset = instr & 0xFFFFFF;
-     offset = offset << 2;
-//     int checkSign = offset >> 25;
-//     if (checkSign) {
-//        offset = offset | 0xFC000000;
-//     }
-     state.registers[PC] += offset;
-     //state.registers = (uint32_t*) PC;
+  //printf("This is a branch instruction\n");
+  int32_t offset = instr & 0xFFFFFF;
+  offset = offset << 2;
+  int checkSign = offset >> 25;
+  if (checkSign) {
+    offset = offset | 0xFC000000;
+  }
+  //printf("%d\n", offset);
+  state.registers[PC] += offset;
+  //state.registers = (uint32_t*) PC;
 }
 
 /*** Pipeline ***/

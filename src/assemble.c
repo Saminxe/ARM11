@@ -147,8 +147,6 @@ int main(int argc, char **argv) {
     }
 
   }
-*/
-
   fclose(src);
   free(buffer);
 
