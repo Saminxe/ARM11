@@ -365,9 +365,6 @@ void singleDataTransfer(State state, uint32_t instr)
   uint8_t Rn = (instr & 0x000F0000) >> 16; // Rn
   uint8_t Rd = (instr & 0x0000F000) >> 12; // Rd
   uint32_t offset = 0;
-  if (Rn == PC) {
-    Rn = state.registers[PC] + 8;
-  }
   if (getInstrBit(instr, 25) == 1) {
     // I = 1; interpret offset as shifted register
     uint8_t rm = instr & 0x0000000F;
