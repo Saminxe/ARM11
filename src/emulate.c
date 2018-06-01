@@ -383,9 +383,7 @@ void singleDataTransfer(State state, uint32_t instr)
     // I = 0; interpret offset as unsigned immediate offset
     offset = instr & 0x00000FFF;
   }
-  //printf("Offset: %u\n", offset);
   uint32_t tempReg = state.registers[Rn];
-  //printf("Before: %u\n", tempReg);
   if (getInstrBit(instr, 23) == 1) {
     // U = 1; offset added to base register
     tempReg += offset;
@@ -434,6 +432,7 @@ void singleDataTransfer(State state, uint32_t instr)
         state.memory[state.registers[Rn] + 1] = (state.registers[Rd] & 0x0000FF00) >> 8;
         state.memory[state.registers[Rn] + 2] = (state.registers[Rd] & 0x00FF0000) >> 16;
         state.memory[state.registers[Rn] + 3] = (state.registers[Rd] & 0xFF000000) >> 24;
+        state.registers[Rn] = tempReg;
       }
     }
   }
