@@ -50,8 +50,8 @@ void output(State state)
   printf("CPSR: % 8d (0x%08x)\n", state.registers[CPSR], state.registers[CPSR]);
   printf("Non-zero memory: \n");
   do {
-    huiyi = state.memory[i] | state.memory[i+1] << 8 | state.memory[i+2] << 16
-      | state.memory[i+3] << 24;
+    huiyi = state.memory[i] << 24 | state.memory[i+1] << 16
+      | state.memory[i+2] << 8 | state.memory[i+3];
     if (huiyi == 0) break;
     printf("%08x: 0x%08x\n", i, huiyi);
     i += 4;
@@ -433,7 +433,7 @@ void branchDataTransfer(State state, uint32_t instr)
 }
 
 /*** Pipeline ***/
-void process(State state)
+int process(State state)
 {
   const uint32_t DATA_PROCESS_PATTERN = 0x00000000;
   const uint32_t DATA_PROCESS_MASK = 0x0C000000;
@@ -476,7 +476,7 @@ void process(State state)
             dataProcess(state, decoded);
           else if (patternMatcher(decoded, SDT_PATTERN, SDT_MASK))
             singleDataTransfer(state, decoded);
-          else printf("not a valid instruction u schmuck\n");
+          else {printf("not a valid instruction u schmuck\n"); return 1;};
           decoded = fetched;
         }
         fetched = state.memory[state.registers[PC]] |
@@ -493,74 +493,35 @@ void process(State state)
         state.registers[PC] += 4;
       }
     }
-
     //printf("%x\n", instr);
-
   } while (state.registers[PC] < 65536 && decoded != 0);
-
+  return 0;
 }
 
 int main(int argc, char **argv)
 {
   State state = {(uint8_t *) calloc(65536, sizeof(char)),
-      (uint32_t *) calloc(17, sizeof(long))};
-  FILE *proc;
-  int procSize;
-
+      (uint32_t *) calloc(17, sizeof(long))}; // Allocate the machine state
+  FILE *proc; // Allocate the stream to be read
+  int procSize; // Initialize the size of the file
+  int succ = 0;
   if (argc != 2) {
     printf("Usage = %s filename\n", argv[0]);
     return EXIT_FAILURE;
-  }
-
+  } // Check the correct number of arguments
   proc = fopen(argv[1], "rb");
-
   if (proc == NULL) {
     printf("File Load Failure\n");
     return EXIT_FAILURE;
-  }
-
+  } // Check the file isn't null
   fseek(proc, 0, SEEK_END);
-  procSize = ftell(proc);
-  fseek(proc, 0, SEEK_SET);
-  fread(state.memory, sizeof(uint8_t), procSize, proc);
-
-  /* Register Tests
-  state.registers[0] = 4;
-  state.registers[1] = 5;
-  state.registers[2] = 0xffff0000;
-  */
-
-  process(state);
-
-  /* Debugging */
-
-  //printMemoryComposition(memory, procSize);
-  //printRegisterComposition(registers);
-
-  /*for (int i = 0; i <= 16; i++) {
-    uint32_t cpsrState = 0x10000000 * i;
-    condChecks(registers, cpsrState);
-  }*/
-
-  /*
-  uint32_t getInstrBitTest = 0x00000001;
-  for (int i = 31; i >= 0; i--) {
-      printf("%d", getInstrBit(getInstrBitTest, i));
-  }
-
-  uint32_t imm = 0x000000FF;
-  uint8_t rotate = 0x1;
-  uint32_t rotated = imm >> rotate | imm << (32 - rotate);
-  printf("%" PRIu32 "\n", imm);
-
-*/
-
-  /* End of debugging*/
-  output(state);
-
-  free(state.memory);
-  free(state.registers);
-  fclose(proc);
-
-  return EXIT_SUCCESS;
+  procSize = ftell(proc); // Get the size of the file
+  fseek(proc, 0, SEEK_SET); // Reset the seeker
+  fread(state.memory, sizeof(uint8_t), procSize, proc); // Read the file inbto memory
+  succ = process(state); // Call the pipeline loop
+  output(state); // Print the result of the pipeline
+  free(state.memory); // Free the memory
+  free(state.registers); // Free the registers
+  fclose(proc); // Close the file
+  return succ; // Return success
 }

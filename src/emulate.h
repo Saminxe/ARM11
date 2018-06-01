@@ -34,4 +34,4 @@ void dataProcess(State state, uint32_t instr);
 void multiply(State state, uint32_t instr);
 void singleDataTransfer(State state, uint32_t instr);
 void branchDataTransfer(State state, uint32_t instr);
-void process(State state);
+int process(State state);
