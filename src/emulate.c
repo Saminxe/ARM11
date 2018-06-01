@@ -9,36 +9,6 @@
 ╚═════╝    ╚═╝      ╚═╝   ╚══════╝     ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝    ╚═╝╚══════╝    ╚══════╝╚═╝   ╚═╝      ╚═╝   ╚══════╝╚══════╝    ╚══════╝╚═╝  ╚═══╝╚═════╝ ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
 */
 
-/*** Debugging tools ***/
-void printState(State state)
-{
-  int i = 0;
-  do {
-    printf("Memory at %d = %02x\n", i, state.memory[i]);
-    i++;
-  } while ((state.memory[i] != 0) && (i < 65536));
-  for (int j = 0; j < 13; j++)
-    printf("E%02d: %08x\n", j, state.registers[j]);
-  printf("ESP: %08x\n", state.registers[SP]);
-  printf("ELR: %08x\n", state.registers[LR]);
-  printf("EPC: %08x\n", state.registers[PC]);
-  printf("CPSR: %x\n", state.registers[CPSR]);
-}
-
-
-void condChecks(State state, uint32_t cpsrState)
-{
-  state.registers[CPSR] = cpsrState;
-  printf("CPSR: %x\n", cpsrState);
-  printf("Code 0000 returns %d\n", checkCond(0x0, state));
-  printf("Code 0001 returns %d\n", checkCond(0x1, state));
-  printf("Code 1010 returns %d\n", checkCond(0xA, state));
-  printf("Code 1011 returns %d\n", checkCond(0xB, state));
-  printf("Code 1100 returns %d\n", checkCond(0xC, state));
-  printf("Code 1101 returns %d\n", checkCond(0xD, state));
-  printf("Code 1110 returns %d\n\n", checkCond(0xE, state));
-}
-
 void output(State state)
 {
   int i = 0;
@@ -74,8 +44,9 @@ int patternMatcher(uint32_t instr, uint32_t pattern, uint32_t mask)
 
 /* Check CSPR registers against a given condition code.
  * Return 1 if condition is met, 0 if it is not.*/
-int checkCond(uint8_t cond, State state)
+int checkInstrCond(State state, uint32_t instr)
 {
+  uint8_t cond = instr >> 28;
   uint8_t cpsr = state.registers[CPSR] >> 28;
   switch (cond) {
     case (0x0): return (cpsr & Z) == 0x4;
@@ -87,7 +58,7 @@ int checkCond(uint8_t cond, State state)
     case (0xE): return 1;
     default: printf("ERROR: Condition code %c is not acceptable\n", cond);
   }
-  return -1;
+  return 0;
 }
 
 /* Sets/unsets the desired flag in CPSR.
@@ -118,12 +89,14 @@ void updateFlags(uint32_t result, int carry, State state) {
   setUnset(C, carry, state);
 }
 
-/* Check CSPR registers against conditions set according to the first four bits of the instr.
- * Return 1 if condition is met, 0 if it is not.*/
-// If tests do not work, try casting cond to a uint8_t?
-int checkInstrCond(State state, uint32_t instr) {
-  uint8_t cond = instr >> 28;
-  return checkCond(cond, state);
+// Loads 32-bit digit from memory address
+uint32_t load(State state, uint8_t select)
+{
+  assert(0 <= select && select <= 65536);
+  return state.memory[select] |
+    state.memory[select + 1] << 8 |
+    state.memory[select + 2] << 16 |
+    state.memory[select + 3] << 24;
 }
 
 // Return bit at given position in instr.
@@ -197,13 +170,6 @@ void checkBorrow(uint32_t a, uint32_t b, uint32_t res, State state) {
   } else {
     setUnset(C, 1, state);
   }
-}
-
-uint32_t endianConversion(uint32_t num) {
-  return ((num >> 24) & 0xff) |
-      ((num << 8) & 0xff0000) |
-      ((num >> 8) & 0xff00) |
-      ((num << 24) & 0xff000000);
 }
 
 /*** Processing Instructions ***/
@@ -339,7 +305,6 @@ void dataProcess(State state, uint32_t instr)
 
 void multiply(State state, uint32_t instr)
 {
-  //printf("This is a multiply instruction\n");
   int acc = (instr & 0x00200000) >> 21;
   int set = (instr & 0x00100000) >> 20;
   uint8_t rd = (instr & 0x000F0000) >> 16;
@@ -349,19 +314,15 @@ void multiply(State state, uint32_t instr)
   state.registers[rd] = state.registers[rm] * state.registers[rs];
   if (acc) {
     state.registers[rd] += state.registers[rn];
-    //printf("Register E%02u = %u * %u + %u = %u\n", rd, state.registers[rm], state.registers[rs], state.registers[rn], state.registers[rd]);
   }
-//  else printf("Register E%02u = %u * %u = %u\n", rd, state.registers[rm], state.registers[rs], state.registers[rd]);
   if (set) {
     setUnset(N, state.registers[rd] >> 31, state);
     setUnset(Z, state.registers[rd] == 0, state);
   }
 }
 
-//If tests do not work, try casting shifted ints instead of directly assigning types?
 void singleDataTransfer(State state, uint32_t instr)
 {
-  //printf("This is an SDT instruction\n");
   uint8_t Rn = (instr & 0x000F0000) >> 16; // Rn
   uint8_t Rd = (instr & 0x0000F000) >> 12; // Rd
   uint32_t offset = 0;
@@ -398,19 +359,13 @@ void singleDataTransfer(State state, uint32_t instr)
       // P = 1; offset is added/subtracted to base register before transferring data
       if (tempReg > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", tempReg);
       else {
-        state.registers[Rd] = state.memory[tempReg] |
-          state.memory[tempReg + 1] << 8 |
-          state.memory[tempReg + 2] << 16 |
-          state.memory[tempReg + 3] << 24;
+        state.registers[Rd] = load(state, tempReg);
       }
     } else {
       // P = 0; offset is added/subtracted to base register after transferring data
       if (state.registers[Rn] > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", state.registers[Rn]);
       else {
-        state.registers[Rd] = state.memory[state.registers[Rn]] |
-          state.memory[state.registers[Rn] + 1] << 8 |
-          state.memory[state.registers[Rn] + 2] << 16 |
-          state.memory[state.registers[Rn] + 3] << 24;
+        state.registers[Rd] = load(state, state.registers[Rn]);
         state.registers[Rn] = tempReg;
       }
     }
@@ -419,11 +374,12 @@ void singleDataTransfer(State state, uint32_t instr)
     if (getInstrBit(instr, 24) == 1) {
       // P = 1; offset is added/subtracted to base register before transferring data
       if (tempReg > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", tempReg);
-      else
+      else {
         state.memory[tempReg] = state.registers[Rd] & 0x000000FF;
         state.memory[tempReg + 1] = (state.registers[Rd] & 0x0000FF00) >> 8;
         state.memory[tempReg + 2] = (state.registers[Rd] & 0x00FF0000) >> 16;
         state.memory[tempReg + 3] = (state.registers[Rd] & 0xFF000000) >> 24;
+      }
     } else {
       // P = 0; offset is added/subtracted to base register after transferring data
       if (state.registers[Rn] > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", state.registers[Rn]);
@@ -440,79 +396,49 @@ void singleDataTransfer(State state, uint32_t instr)
 
 void branchDataTransfer(State state, uint32_t instr)
 {
-  //printf("This is a branch instruction\n");
   int32_t offset = instr & 0xFFFFFF;
   offset = offset << 2;
   int checkSign = offset >> 25;
   if (checkSign) {
     offset = offset | 0xFC000000;
   }
-  //printf("%d\n", offset);
   state.registers[PC] += offset;
 }
 
 /*** Pipeline ***/
 int process(State state)
 {
-  const uint32_t DATA_PROCESS_PATTERN = 0x00000000;
-  const uint32_t DATA_PROCESS_MASK = 0x0C000000;
-  const uint32_t MULTIPLY_PATTERN = 0x00000090;
-  const uint32_t MULTIPLY_MASK = 0x0FC00090;
-  const uint32_t SDT_PATTERN = 0x04000000;
-  const uint32_t SDT_MASK = 0x0C600000;
-  const uint32_t BRANCH_PATTERN = 0x0A000000;
-  const uint32_t BRANCH_MASK = 0x0F000000;
   int isFetched = 0;
   int isDecoded = 0;
-  uint32_t fetched = 0;
+  uint32_t fetched = 1;
   uint32_t decoded = 1;
-
   do {
     if (!isFetched && !isDecoded) {
-      fetched = state.memory[state.registers[PC]] |
-        state.memory[state.registers[PC] + 1] << 8 |
-        state.memory[state.registers[PC] + 2] << 16 |
-        state.memory[state.registers[PC] + 3] << 24;
-      state.registers[PC] += 4;
       isFetched++;
     } else if (isFetched && !isDecoded) {
       decoded = fetched;
       isDecoded++;
-      fetched = state.memory[state.registers[PC]] |
-        state.memory[state.registers[PC] + 1] << 8 |
-        state.memory[state.registers[PC] + 2] << 16 |
-        state.memory[state.registers[PC] + 3] << 24;
-      state.registers[PC] += 4;
     } else if (isFetched && isDecoded) {
       if (checkInstrCond(state, decoded)) {
-        if (patternMatcher(decoded, BRANCH_PATTERN, BRANCH_MASK)) {
+        if (patternMatcher(decoded, 0x0A000000, 0x0F000000)) {
           branchDataTransfer(state, decoded);
           isDecoded = 0;
         } else {
-          if (patternMatcher(decoded, MULTIPLY_PATTERN, MULTIPLY_MASK))
+          if (patternMatcher(decoded, 0x00000090, 0x0FC00090))
             multiply(state, decoded);
-          else if (patternMatcher(decoded, DATA_PROCESS_PATTERN, DATA_PROCESS_MASK))
+          else if (patternMatcher(decoded, 0x00000000, 0x0C000000))
             dataProcess(state, decoded);
-          else if (patternMatcher(decoded, SDT_PATTERN, SDT_MASK))
+          else if (patternMatcher(decoded, 0x04000000, 0x0C600000))
             singleDataTransfer(state, decoded);
           else {printf("not a valid instruction u schmuck\n"); return 1;};
           decoded = fetched;
         }
-        fetched = state.memory[state.registers[PC]] |
-          state.memory[state.registers[PC] + 1] << 8 |
-          state.memory[state.registers[PC] + 2] << 16 |
-          state.memory[state.registers[PC] + 3] << 24;
-        state.registers[PC] += 4;
       } else {
         decoded = fetched;
-        fetched = state.memory[state.registers[PC]] |
-          state.memory[state.registers[PC] + 1] << 8 |
-          state.memory[state.registers[PC] + 2] << 16 |
-          state.memory[state.registers[PC] + 3] << 24;
-        state.registers[PC] += 4;
       }
     }
-    //printf("%x\n", instr);
+    fetched = load(state, state.registers[PC]);
+    state.registers[PC] += 4;
   } while (state.registers[PC] < 65536 && decoded != 0);
   return 0;
 }
@@ -536,7 +462,7 @@ int main(int argc, char **argv)
   fseek(proc, 0, SEEK_END);
   procSize = ftell(proc); // Get the size of the file
   fseek(proc, 0, SEEK_SET); // Reset the seeker
-  fread(state.memory, sizeof(uint8_t), procSize, proc); // Read the file inbto memory
+  fread(state.memory, sizeof(uint8_t), procSize, proc); // Read the file into memory
   succ = process(state); // Call the pipeline loop
   output(state); // Print the result of the pipeline
   free(state.memory); // Free the memory
