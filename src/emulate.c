@@ -238,7 +238,7 @@ void dataProcess(State state, uint32_t instr)
     } else {
       // Bit 4 = 1; Shift specified by a register.
       uint8_t rs = instr & 0x00000F00;
-      amount = state.registers[rs] & 0x0000000F;
+      amount = state.registers[rs] & 0x000000FF;
     }
     oprand2 = applyShiftType(value, instr, amount, set, state);
   }
@@ -380,9 +380,9 @@ void singleDataTransfer(State state, uint32_t instr)
       // Bit 4 = 0; Shift by a constant amount.
       amount = instr & 0x00000F80;
     } else {
-      // Bit 4 = 1; Shift specified by a register.
+      // Bit 4 = 1; Shift specified by the bottom byte of Rs.
       uint8_t rs = instr & 0x00000F00;
-      amount = state.registers[rs] & 0x0000000F;
+      amount = state.registers[rs] & 0x000000FF;
     }
     offset = applyShiftType(value, instr, amount, 0, state);
   } else {
@@ -401,10 +401,16 @@ void singleDataTransfer(State state, uint32_t instr)
     // L = 1; word loaded from memory
     if (getInstrBit(instr, 24) == 1) {
       // P = 1; offset is added/subtracted to base register before transferring data
-      state.registers[Rd] = endianConversion(state.memory[tempReg]);
+      state.registers[Rd] = state.memory[state.registers[tempReg]] |
+        state.memory[state.registers[tempReg] + 1] << 8 |
+        state.memory[state.registers[tempReg] + 2] << 16 |
+        state.memory[state.registers[tempReg] + 3] << 24;
     } else {
       // P = 0; offset is added/subtracted to base register after transferring data
-      state.registers[Rd] = endianConversion(state.memory[state.registers[Rn]]);
+      state.registers[Rd] = state.memory[state.registers[Rn]] |
+        state.memory[state.registers[Rn] + 1] << 8 |
+        state.memory[state.registers[Rn] + 2] << 16 |
+        state.memory[state.registers[Rn] + 3] << 24;
       state.registers[Rn] = tempReg;
     }
   } else {
