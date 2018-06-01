@@ -45,7 +45,7 @@ void output(State state)
   uint32_t huiyi = 0xffffff;
   printf("Registers:\n");
   for (int j = 0; j < 10; j++)
-    printf("$%d  : % 10d (0x%08x)\n", j, state.registers[j], state.registers[j]);
+    printf("$%d  : %10d (0x%08x)\n", j, state.registers[j], state.registers[j]);
   for (int j = 10; j < 13; j++)
       printf("$%d : %10d (0x%08x)\n", j, state.registers[j], state.registers[j]);
   printf("PC  : %10d (0x%08x)\n", state.registers[PC], state.registers[PC]);
@@ -54,8 +54,8 @@ void output(State state)
   do {
     huiyi = state.memory[i] << 24 | state.memory[i+1] << 16
       | state.memory[i+2] << 8 | state.memory[i+3];
-    if (huiyi == 0) break;
-    printf("0x%08x: 0x%08x\n", i, huiyi);
+    if (huiyi != 0)
+      printf("0x%08x: 0x%08x\n", i, huiyi);
     i += 4;
   } while (i < 65536);
 }
@@ -363,11 +363,9 @@ void multiply(State state, uint32_t instr)
 void singleDataTransfer(State state, uint32_t instr)
 {
   //printf("This is an SDT instruction\n");
-  uint32_t RnRdOffset = (instr << 12) >> 12;
-  uint8_t RnRd = RnRdOffset >> 12;
-  uint8_t Rn = RnRd >> 4;
-  uint8_t Rd = (RnRd << 4) >> 4;
-  uint32_t offset;
+  uint8_t Rn = (instr & 0x000F0000) >> 16; // Rn
+  uint8_t Rd = (instr & 0x0000F000) >> 12; // Rd
+  uint32_t offset = 0;
   if (Rn == PC) {
     Rn += 8;
   }
@@ -387,9 +385,11 @@ void singleDataTransfer(State state, uint32_t instr)
     offset = applyShiftType(value, instr, amount, 0, state);
   } else {
     // I = 0; interpret offset as unsigned immediate offset
-    offset = (instr << 20) >> 20;
+    offset = instr & 0x00000FFF;
   }
+  //printf("Offset: %u\n", offset);
   uint32_t tempReg = state.registers[Rn];
+  //printf("Before: %u\n", tempReg);
   if (getInstrBit(instr, 23) == 1) {
     // U = 1; offset added to base register
     tempReg += offset;
@@ -397,31 +397,43 @@ void singleDataTransfer(State state, uint32_t instr)
     // U = 0; offset subtracted from base register
     tempReg -= offset;
   }
+  //printf("After: %u\n", tempReg);
   if (getInstrBit(instr, 20) == 1) {
     // L = 1; word loaded from memory
     if (getInstrBit(instr, 24) == 1) {
       // P = 1; offset is added/subtracted to base register before transferring data
-      state.registers[Rd] = state.memory[state.registers[tempReg]] |
-        state.memory[state.registers[tempReg] + 1] << 8 |
-        state.memory[state.registers[tempReg] + 2] << 16 |
-        state.memory[state.registers[tempReg] + 3] << 24;
+      if (tempReg > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", tempReg);
+      else {
+        state.registers[Rd] = state.memory[tempReg] |
+          state.memory[tempReg + 1] << 8 |
+          state.memory[tempReg + 2] << 16 |
+          state.memory[tempReg + 3] << 24;
+      }
     } else {
       // P = 0; offset is added/subtracted to base register after transferring data
-      state.registers[Rd] = state.memory[state.registers[Rn]] |
-        state.memory[state.registers[Rn] + 1] << 8 |
-        state.memory[state.registers[Rn] + 2] << 16 |
-        state.memory[state.registers[Rn] + 3] << 24;
-      state.registers[Rn] = tempReg;
+      if (state.registers[Rn] > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", state.registers[Rn]);
+      else {
+        state.registers[Rd] = state.memory[state.registers[Rn]] |
+          state.memory[state.registers[Rn] + 1] << 8 |
+          state.memory[state.registers[Rn] + 2] << 16 |
+          state.memory[state.registers[Rn] + 3] << 24;
+        state.registers[Rn] = tempReg;
+      }
     }
   } else {
     // L = 0; word stored into memory
     if (getInstrBit(instr, 24) == 1) {
       // P = 1; offset is added/subtracted to base register before transferring data
-      state.memory[tempReg] = endianConversion(state.registers[Rd]);
+      if (tempReg > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", tempReg);
+      else
+        state.memory[tempReg] = endianConversion(state.registers[Rd]);
     } else {
       // P = 0; offset is added/subtracted to base register after transferring data
-      state.memory[state.registers[Rn]] = endianConversion(state.registers[Rd]);
-      state.registers[Rn] = tempReg;
+      if (state.registers[Rn] > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", state.registers[Rn]);
+      else {
+        state.memory[state.registers[Rn]] = endianConversion(state.registers[Rd]);
+        state.registers[Rn] = tempReg;
+      }
     }
   }
 }
