@@ -42,16 +42,20 @@ void condChecks(State state, uint32_t cpsrState)
 void output(State state)
 {
   int i = 0;
+  uint32_t huiyi = 0xffffff;
   printf("Registers: \n");
   for (int j = 0; j < 13; j++)
-    printf("$%d: %8d (0x%08x)\n", j, state.registers[j], state.registers[j]);
-  printf("PC: %8d (0x%08x)\n", state.registers[PC], state.registers[PC]);
-  printf("CPSR: %8d (0x%08x)\n", state.registers[CPSR], state.registers[CPSR]);
+    printf("$%02d:  % 8d (0x%08x)\n", j, state.registers[j], state.registers[j]);
+  printf("PC:   % 8d (0x%08x)\n", state.registers[PC], state.registers[PC]);
+  printf("CPSR: % 8d (0x%08x)\n", state.registers[CPSR], state.registers[CPSR]);
   printf("Non-zero memory: \n");
   do {
-    printf("%d: %02x\n", i, state.memory[i]);
-    i++;
-  } while ((state.memory[i] != 0) && (i < 65536));
+    huiyi = state.memory[i] | state.memory[i+1] << 8 | state.memory[i+2] << 16
+      | state.memory[i+3] << 24;
+    if (huiyi == 0) break;
+    printf("%08x: 0x%08x\n", i, huiyi);
+    i += 4;
+  } while (i < 65536);
 }
 /*** End of debugging tools ***/
 
@@ -460,24 +464,33 @@ void process(State state)
         state.memory[state.registers[PC] + 3] << 24;
       state.registers[PC] += 4;
     } else if (isFetched && isDecoded) {
-      if (patternMatcher(decoded, BRANCH_PATTERN, BRANCH_MASK)) {
-        branchDataTransfer(state, decoded);
-        isDecoded = 0;
+      if (checkInstrCond(state, decoded)) {
+        if (patternMatcher(decoded, BRANCH_PATTERN, BRANCH_MASK)) {
+          branchDataTransfer(state, decoded);
+          isDecoded = 0;
+        } else {
+          if (patternMatcher(decoded, MULTIPLY_PATTERN, MULTIPLY_MASK))
+            multiply(state, decoded);
+          else if (patternMatcher(decoded, DATA_PROCESS_PATTERN, DATA_PROCESS_MASK))
+            dataProcess(state, decoded);
+          else if (patternMatcher(decoded, SDT_PATTERN, SDT_MASK))
+            singleDataTransfer(state, decoded);
+          else printf("not a valid instruction u schmuck\n");
+          decoded = fetched;
+        }
+        fetched = state.memory[state.registers[PC]] |
+          state.memory[state.registers[PC] + 1] << 8 |
+          state.memory[state.registers[PC] + 2] << 16 |
+          state.memory[state.registers[PC] + 3] << 24;
+        state.registers[PC] += 4;
       } else {
-        if (patternMatcher(decoded, MULTIPLY_PATTERN, MULTIPLY_MASK))
-          multiply(state, decoded);
-        else if (patternMatcher(decoded, DATA_PROCESS_PATTERN, DATA_PROCESS_MASK))
-          dataProcess(state, decoded);
-        else if (patternMatcher(decoded, SDT_PATTERN, SDT_MASK))
-          singleDataTransfer(state, decoded);
-        else printf("not a valid instruction u schmuck\n");
         decoded = fetched;
+        fetched = state.memory[state.registers[PC]] |
+          state.memory[state.registers[PC] + 1] << 8 |
+          state.memory[state.registers[PC] + 2] << 16 |
+          state.memory[state.registers[PC] + 3] << 24;
+        state.registers[PC] += 4;
       }
-      fetched = state.memory[state.registers[PC]] |
-        state.memory[state.registers[PC] + 1] << 8 |
-        state.memory[state.registers[PC] + 2] << 16 |
-        state.memory[state.registers[PC] + 3] << 24;
-      state.registers[PC] += 4;
     }
 
     //printf("%x\n", instr);
