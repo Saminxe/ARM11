@@ -144,7 +144,7 @@ int main(int argc, char **argv) {
           //gotta implement it for each time of instruction ffs
           //use helper method
         }
-      } else if (opcode == "byte" || opcode = "word") {
+      } else if (opcode == "byte" || opcode == "word") {
         bmem = optab(opcode);
         if ( > strlen(bmem)) { //overflow check cba right now
           //TODO: write bmem to object program
@@ -155,11 +155,9 @@ int main(int argc, char **argv) {
       fgets(bmem, strlen(bmem), src); //read next input line
     }
     fwrite(bmem, sizeof(char), sizeof(bmem), dest);
-
   }
   fclose(src);
   free(buffer);
-
 }
 
 
