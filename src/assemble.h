@@ -29,3 +29,6 @@ int contains(char *string, char c);
 int symtabContains(SymbolTable m, char *k);
 void symtabAdd(SymbolTable m, Symbol e);
 uint8_t getKeyVal(SymbolTable m, char *k);
+int optab(char* a);
+int optabCheck(char* a);
+int equals(char *a, char *b);

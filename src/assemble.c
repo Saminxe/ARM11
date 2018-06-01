@@ -18,9 +18,27 @@ int contains(char *string, char c)
   return 0;
 }
 
-//operation code table
-int optab(char *string) {
-  return 1;
+int typeCheck(char* opcode) {
+  opcode[3] = 0;
+  if (equals(opcode, "add")
+    || equals(opcode, "sub")
+    || equals(opcode, "rsb")
+    || equals(opcode, "and")
+    || equals(opcode, "eor")
+    || equals(opcode, "orr")
+    || equals(opcode, "mov")
+    || equals(opcode, "tst")
+    || equals(opcode, "teq")
+    || equals(opcode, "cmp")
+    || equals(opcode, "lsl"))
+    return 0;
+  else if (equals(opcode, "mul") || equals(opcode, "mla"))
+    return 1;
+  else if (equals(opcode, "ldr") || equals(opcode, "str"))
+    return 2;
+  opcode[1] = 0;
+  if (equals(opcode, "b")) return 3;
+  return -1;
 }
 
 int main(int argc, char **argv)
@@ -50,6 +68,9 @@ int main(int argc, char **argv)
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
     char *opcode = strtok(buffer, " ");
     char *operands = strtok(NULL, " ");
+    if (operands != NULL) {
+      operands[strlen(operands) - 1] = 0;
+    }
     if (*opcode != ';') { // If it is not a comment
       if (opcode[strlen(opcode) - 2] == ':') { // If it is a label
         opcode[strlen(opcode) - 2] = 0;
@@ -63,28 +84,42 @@ int main(int argc, char **argv)
           size++;
           symtab.size = size;
         }
-      } else if (optab(opcode)) {
-        printf("Opcode = %s, Operands = %s\n", opcode, operands);
-        locctr += 32; // Length of instruction
       } else {
-        printf("Unrecognized opcode %s\n", opcode);
+        if (optabCheck(opcode)) {
+          printf("Opcode: %s, operands: %s, type: %u\n", opcode, operands, typeCheck(opcode));
+          locctr+=32;
+        } else {
+          if (strlen(opcode) == 3) {
+            opcode[1] = 0;
+          } else if (strlen(opcode) == 5){
+            opcode[3] = 0;
+          } else {
+            printf("Unrecognized opcode %s\n", opcode);
+          }
+          if (optabCheck(opcode)) {
+            printf("Opcode: %s, operands: %s, type: %u\n", opcode, operands, typeCheck(opcode));
+            locctr+=32;
+          } else {
+                    printf("Unrecognized opcode %s\n", opcode);
+          }
+        }
       }
     }
   }
 
   printSymtab(symtab);
-
-  /* Translation Loop */
+/*
+  Translation Loop
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
     char *opcode = strtok(buffer, " ");
     char *operands = strtok(NULL, " ");
     if(*opcode != ';') {
-      if (OPTABcheck(opcode)) {
-        if ()
+      if (optabCheck(opcode)) {
       }
     }
 
   }
+*/
 
   fclose(src);
   free(buffer);
@@ -100,6 +135,8 @@ int symtabContains(SymbolTable m, char *k)
   }
   return 0;
 }
+
+
 
 uint8_t getKeyVal(SymbolTable m, char *k) {
   for (int i = 0; i < m.size; i++) {
@@ -132,9 +169,9 @@ int equals(char* a, char* b)
 
 //the code below is subject to change depending if we actually need to keep track of
 // the instruction format, available addressing modes and length information
-/*
+
 //OPTAB (operation code table)
-int OPTAB(char* a)
+int optab(char* a)
 {
   if(equals(a, "add")) {
     return 0x800000;
@@ -172,10 +209,10 @@ int OPTAB(char* a)
   return -1;
 }
 
-int OPTABcheck(char* a) {
-  if(OPTAB(a) != -1) {
+int optabCheck(char* a)
+{
+  if(optab(a) != -1) {
     return 1;
   }
   return 0;
 }
-*/
