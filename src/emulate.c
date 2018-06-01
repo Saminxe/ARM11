@@ -140,7 +140,7 @@ uint32_t ror(uint32_t value, uint8_t rotation) {
 
 // Apply shift according to shift type.
 uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, int set, State state) {
-  assert(0 <= amount && amount <= 32);
+  if(!(0 <= amount && amount <= 32)) printf("Amount: %d/n", amount);
   int bit6 = getInstrBit(instr, 6);
   int bit5 = getInstrBit(instr, 5);
   uint32_t result = value;
@@ -361,19 +361,10 @@ void multiply(State state, uint32_t instr)
 //If tests do not work, try casting shifted ints instead of directly assigning types?
 void singleDataTransfer(State state, uint32_t instr)
 {
-<<<<<<< HEAD
   //printf("This is an SDT instruction\n");
   uint8_t Rn = (instr & 0x000F0000) >> 16; // Rn
   uint8_t Rd = (instr & 0x0000F000) >> 12; // Rd
   uint32_t offset = 0;
-=======
-  printf("This is an SDT instruction\n");
-  uint32_t RnRdOffset = instr & 0xFFFFF;
-  uint8_t RnRd = RnRdOffset >> 12;
-  uint8_t Rn = RnRd >> 4;
-  uint8_t Rd = RnRd & 0xF;
-  uint32_t offset;
->>>>>>> b79b6b5772b468ca9b54282bac309c199eb2de52
   if (Rn == PC) {
     Rn = state.registers[PC] + 8;
   }
@@ -393,11 +384,7 @@ void singleDataTransfer(State state, uint32_t instr)
     offset = applyShiftType(value, instr, amount, 0, state);
   } else {
     // I = 0; interpret offset as unsigned immediate offset
-<<<<<<< HEAD
     offset = instr & 0x00000FFF;
-=======
-    offset = instr & 0xFFF;
->>>>>>> b79b6b5772b468ca9b54282bac309c199eb2de52
   }
   //printf("Offset: %u\n", offset);
   uint32_t tempReg = state.registers[Rn];
