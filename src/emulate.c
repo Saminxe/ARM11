@@ -43,17 +43,19 @@ void output(State state)
 {
   int i = 0;
   uint32_t huiyi = 0xffffff;
-  printf("Registers: \n");
-  for (int j = 0; j < 13; j++)
-    printf("$%02d:  % 8d (0x%08x)\n", j, state.registers[j], state.registers[j]);
-  printf("PC:   % 8d (0x%08x)\n", state.registers[PC], state.registers[PC]);
-  printf("CPSR: % 8d (0x%08x)\n", state.registers[CPSR], state.registers[CPSR]);
-  printf("Non-zero memory: \n");
+  printf("Registers:\n");
+  for (int j = 0; j < 10; j++)
+    printf("$%d  : % 10d (0x%08x)\n", j, state.registers[j], state.registers[j]);
+  for (int j = 10; j < 13; j++)
+      printf("$%d : %10d (0x%08x)\n", j, state.registers[j], state.registers[j]);
+  printf("PC  : %10d (0x%08x)\n", state.registers[PC], state.registers[PC]);
+  printf("CPSR: %10d (0x%08x)\n", state.registers[CPSR], state.registers[CPSR]);
+  printf("Non-zero memory:\n");
   do {
     huiyi = state.memory[i] << 24 | state.memory[i+1] << 16
       | state.memory[i+2] << 8 | state.memory[i+3];
     if (huiyi == 0) break;
-    printf("%08x: 0x%08x\n", i, huiyi);
+    printf("0x%08x: 0x%08x\n", i, huiyi);
     i += 4;
   } while (i < 65536);
 }
@@ -337,7 +339,7 @@ void dataProcess(State state, uint32_t instr)
 
 void multiply(State state, uint32_t instr)
 {
-  printf("This is a multiply instruction\n");
+  //printf("This is a multiply instruction\n");
   int acc = (instr & 0x00200000) >> 21;
   int set = (instr & 0x00100000) >> 20;
   uint8_t rd = (instr & 0x000F0000) >> 16;
@@ -360,7 +362,7 @@ void multiply(State state, uint32_t instr)
 
 void singleDataTransfer(State state, uint32_t instr)
 {
-  printf("This is an SDT instruction\n");
+  //printf("This is an SDT instruction\n");
   uint32_t RnRdOffset = (instr << 12) >> 12;
   uint8_t RnRd = RnRdOffset >> 12;
   uint8_t Rn = RnRd >> 4;
