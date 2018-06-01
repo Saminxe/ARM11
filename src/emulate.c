@@ -453,7 +453,6 @@ void branchDataTransfer(State state, uint32_t instr)
   }
   //printf("%d\n", offset);
   state.registers[PC] += offset;
-  //state.registers = (uint32_t*) PC;
 }
 
 /*** Pipeline ***/
