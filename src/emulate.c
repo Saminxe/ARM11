@@ -425,13 +425,18 @@ void singleDataTransfer(State state, uint32_t instr)
       // P = 1; offset is added/subtracted to base register before transferring data
       if (tempReg > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", tempReg);
       else
-        state.memory[tempReg] = endianConversion(state.registers[Rd]);
+        state.memory[tempReg] = state.registers[Rd] & 0x000000FF;
+        state.memory[tempReg + 1] = (state.registers[Rd] & 0x0000FF00) >> 8;
+        state.memory[tempReg + 2] = (state.registers[Rd] & 0x00FF0000) >> 16;
+        state.memory[tempReg + 3] = (state.registers[Rd] & 0xFF000000) >> 24;
     } else {
       // P = 0; offset is added/subtracted to base register after transferring data
       if (state.registers[Rn] > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", state.registers[Rn]);
       else {
-        state.memory[state.registers[Rn]] = endianConversion(state.registers[Rd]);
-        state.registers[Rn] = tempReg;
+        state.memory[state.registers[Rn]] = state.registers[Rd] & 0x000000FF;
+        state.memory[state.registers[Rn] + 1] = (state.registers[Rd] & 0x0000FF00) >> 8;
+        state.memory[state.registers[Rn] + 2] = (state.registers[Rd] & 0x00FF0000) >> 16;
+        state.memory[state.registers[Rn] + 3] = (state.registers[Rd] & 0xFF000000) >> 24;
       }
     }
   }
