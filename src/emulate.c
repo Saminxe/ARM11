@@ -231,13 +231,13 @@ void dataProcess(State state, uint32_t instr)
   // If Operand2 is a register (I = 0)
     uint8_t rm = instr & 0x0000000F;
     uint32_t value = state.registers[rm];
-    uint8_t amount = 0x0;
+    uint8_t amount = 0;
     if (!getInstrBit(instr,4)) {
       // Bit 4 = 0; Shift by a constant amount.
-      amount = instr & 0x00000F80;
+      amount = (instr & 0x00000F80) >> 7;
     } else {
-      // Bit 4 = 1; Shift specified by a register.
-      uint8_t rs = instr & 0x00000F00;
+      // Bit 4 = 1; Shift specified by the bottom byte of Rs.
+      uint8_t rs = (instr & 0x00000F00) >> 8;
       amount = state.registers[rs] & 0x000000FF;
     }
     oprand2 = applyShiftType(value, instr, amount, set, state);
@@ -375,10 +375,10 @@ void singleDataTransfer(State state, uint32_t instr)
     uint8_t amount = 0x0;
     if (!getInstrBit(instr,4)) {
       // Bit 4 = 0; Shift by a constant amount.
-      amount = instr & 0x00000F80;
+      amount = (instr & 0x00000F80) >> 7;
     } else {
       // Bit 4 = 1; Shift specified by the bottom byte of Rs.
-      uint8_t rs = instr & 0x00000F00;
+      uint8_t rs = (instr & 0x00000F00) >> 8;
       amount = state.registers[rs] & 0x000000FF;
     }
     offset = applyShiftType(value, instr, amount, 0, state);
