@@ -206,7 +206,6 @@ uint32_t endianConversion(uint32_t num) {
 
 void dataProcess(State state, uint32_t instr)
 {
-  if (!checkInstrCond(state, instr))  return;
   printf("This is a data processing instruction\n");
 
   int immediate = getInstrBit(instr, 25); // I
@@ -341,7 +340,6 @@ void multiply(State state, uint32_t instr)
   uint8_t rn = (instr & 0x0000F000) >> 12;
   uint8_t rs = (instr & 0x00000F00) >> 8;
   uint8_t rm = (instr & 0x0000000F);
-  if (!checkInstrCond(state, instr)) return;
   state.registers[rd] = state.registers[rm] * state.registers[rs];
   if (acc) {
     state.registers[rd] += state.registers[rn];
@@ -359,7 +357,6 @@ void multiply(State state, uint32_t instr)
 void singleDataTransfer(State state, uint32_t instr)
 {
   printf("This is an SDT instruction\n");
-  if (!checkInstrCond(state, instr)) return;
   uint32_t RnRdOffset = (instr << 12) >> 12;
   uint8_t RnRd = RnRdOffset >> 12;
   uint8_t Rn = RnRd >> 4;
@@ -420,16 +417,14 @@ void singleDataTransfer(State state, uint32_t instr)
 void branchDataTransfer(State state, uint32_t instr)
 {
   printf("This is a branch instruction\n");
-  if (checkInstrCond(state, instr)) {
      int32_t offset = instr & 0xFFFFFF;
      offset = offset << 2;
-     int checkSign = offset >> 25;
-     if (checkSign) {
-        offset = offset | 0xFC000000;
-     }
+//     int checkSign = offset >> 25;
+//     if (checkSign) {
+//        offset = offset | 0xFC000000;
+//     }
      state.registers[PC] += offset;
-     state.registers = (uint32_t*) PC;
-  }
+     //state.registers = (uint32_t*) PC;
 }
 
 /*** Pipeline ***/
