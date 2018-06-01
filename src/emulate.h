@@ -20,18 +20,21 @@ typedef struct {
 
 void printState(State state);
 void condChecks(State state, uint32_t cpsrState);
+void output(State state);
 int patternMatcher(uint32_t instr, uint32_t pattern, uint32_t mask);
 int checkCond(uint8_t cond, State state);
+void setUnset(int flag, int set, State state);
+void updateFlags(uint32_t result, int carry, State state);
 int checkInstrCond(State state, uint32_t instr);
 int getInstrBit(uint32_t instr, int position);
 uint32_t ror(uint32_t value, uint8_t rotation);
 uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, int set, State state);
-void setUnset(int flag, int set, State state);
-void updateFlags(uint32_t result, int carry, State state);
 void checkOverflow(uint32_t a, uint32_t b, uint32_t res, State state);
 void checkBorrow(uint32_t a, uint32_t b, uint32_t res, State state);
+uint32_t endianConversion(uint32_t num);
 void dataProcess(State state, uint32_t instr);
 void multiply(State state, uint32_t instr);
 void singleDataTransfer(State state, uint32_t instr);
 void branchDataTransfer(State state, uint32_t instr);
 int process(State state);
+int main(int argc, char **argv);
