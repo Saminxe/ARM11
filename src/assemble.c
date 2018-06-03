@@ -1,13 +1,73 @@
 #include "assemble.h"
 
 /* Debug */
-void printSymtab(SymbolTable s) {
+void printSymtab(SymbolTable s)
+{
   int i = 0;
   do {
     printf("%s, %u\n", s.symbols[i].name, s.symbols[i].val);
     i++;
   } while (i < s.size);
 }
+
+Type getType(OpCode op)
+{
+  if (0 <= op && op <= 9) return DATA;
+  else if (10 <= op && op <= 11) return MULT;
+  else if (12 <= op && op <= 13) return SDTR;
+  else if (op == 14) return BRCH;
+  else if (op == 15) return DATA;
+  else return ERRO;
+}
+
+int noOfArgs(OpCode op)
+{
+  if (0 <= op && op <= 5) return 3;
+  else if (6 <= op && op <= 9) return 2;
+  else if (op == 10) return 3;
+  else if (op == 11) return 4;
+  else if (12 <= op && op <= 13) return 2;
+  else if (op == 14) return 1;
+  else if (op == 15) return 2;
+  else return -1;
+}
+
+void printInstruction(OpCode opcode, Condition cond, char **args)
+{
+  int expectedArgs = noOfArgs(opcode);
+  int i = 0;
+  if (opcode == ADD) printf("add");
+  else if (opcode == SUB) printf("sub");
+  else if (opcode == RSB) printf("rsb");
+  else if (opcode == AND) printf("and");
+  else if (opcode == EOR) printf("eor");
+  else if (opcode == ORR) printf("orr");
+  else if (opcode == MOV) printf("mov");
+  else if (opcode == TST) printf("tst");
+  else if (opcode == TEQ) printf("teq");
+  else if (opcode == CMP) printf("cmp");
+  else if (opcode == MUL) printf("mul");
+  else if (opcode == MLA) printf("mla");
+  else if (opcode == LDR) printf("ldr");
+  else if (opcode == STR) printf("str");
+  else if (opcode == B) printf("b");
+  else if (opcode == LSL) printf("lsl");
+  else printf("ERROR ");
+  if (cond == EQ) printf("eq ");
+  else if (cond == NE) printf("ne ");
+  else if (cond == GE) printf("ge ");
+  else if (cond == LT) printf("lt ");
+  else if (cond == GT) printf("gt ");
+  else if (cond == LE) printf("le ");
+  else if (cond == AL) printf("al ");
+  else printf("ERROR ");
+  do {
+    printf("%s", args[i]);
+    i++;
+  } while (i < expectedArgs);
+}
+
+/* Debug End */
 
 int contains(char *string, char c) {
   int length = strlen(string);
@@ -17,34 +77,124 @@ int contains(char *string, char c) {
   return 0;
 }
 
-int typeCheck(char* opcode) {
-  opcode[3] = 0;
-  if (equals(opcode, "add")
-    || equals(opcode, "sub")
-    || equals(opcode, "rsb")
-    || equals(opcode, "and")
-    || equals(opcode, "eor")
-    || equals(opcode, "orr")
-    || equals(opcode, "mov")
-    || equals(opcode, "tst")
-    || equals(opcode, "teq")
-    || equals(opcode, "cmp")
-    || equals(opcode, "lsl"))
-    return 0;
-  else if (equals(opcode, "mul") || equals(opcode, "mla"))
-    return 1;
-  else if (equals(opcode, "ldr") || equals(opcode, "str"))
-    return 2;
-  opcode[1] = 0;
-  if (equals(opcode, "b")) return 3;
-  return -1;
+int getRegister(char *reg)
+{
+  if (equals(reg, "r0")) return 0;
+  else if (equals(reg, "r1")) return 1;
+  else if (equals(reg, "r2")) return 2;
+  else if (equals(reg, "r3")) return 3;
+  else if (equals(reg, "r4")) return 4;
+  else if (equals(reg, "r5")) return 5;
+  else if (equals(reg, "r6")) return 6;
+  else if (equals(reg, "r7")) return 7;
+  else if (equals(reg, "r8")) return 8;
+  else if (equals(reg, "r9")) return 9;
+  else if (equals(reg, "r10")) return 10;
+  else if (equals(reg, "r11")) return 11;
+  else if (equals(reg, "r12")) return 12;
+  else if (equals(reg, "sp")) return 13;
+  else if (equals(reg, "lr")) return 14;
+  else if (equals(reg, "pc")) return 15;
+  else if (equals(reg, "cpsr")) return 16;
+  else return -1;
+}
+
+Type typeCheck(char *opcode) {
+  char temp[5];
+  strcpy(temp, opcode);
+  temp[3] = 0;
+  if (equals(temp, "add")
+    || equals(temp, "sub")
+    || equals(temp, "rsb")
+    || equals(temp, "and")
+    || equals(temp, "eor")
+    || equals(temp, "orr")
+    || equals(temp, "mov")
+    || equals(temp, "tst")
+    || equals(temp, "teq")
+    || equals(temp, "cmp")
+    || equals(temp, "lsl"))
+    return DATA;
+  else if (equals(temp, "mul") || equals(temp, "mla"))
+    return MULT;
+  else if (equals(temp, "ldr") || equals(temp, "str"))
+    return SDTR;
+  temp[1] = 0;
+  if (equals(temp, "b")) return BRCH;
+  return ERRO;
+}
+
+Condition getCondition(char *cond)
+{
+  if (equals(cond, "eq")) return EQ;
+  else if (equals(cond, "ne")) return NE;
+  else if (equals(cond, "ge")) return GE;
+  else if (equals(cond, "lt")) return LT;
+  else if (equals(cond, "gt")) return GT;
+  else if (equals(cond, "le")) return LE;
+  else if (equals(cond, "al")) return AL;
+  else return ER;
+}
+
+OpCode getOpcode(char* opcode)
+{
+  char temp[3];
+  strcpy(temp, opcode);
+  if (equals(temp, "add")) return ADD;
+  else if (equals(temp, "sub")) return SUB;
+  else if (equals(temp, "rsb")) return RSB;
+  else if (equals(temp, "and")) return AND;
+  else if (equals(temp, "eor")) return ORR;
+  else if (equals(temp, "orr")) return ORR;
+  else if (equals(temp, "mov")) return MOV;
+  else if (equals(temp, "tst")) return TST;
+  else if (equals(temp, "teq")) return TEQ;
+  else if (equals(temp, "cmp")) return CMP;
+  else if (equals(temp, "mul")) return MUL;
+  else if (equals(temp, "mla")) return MLA;
+  else if (equals(temp, "ldr")) return LDR;
+  else if (equals(temp, "str")) return STR;
+  else if (equals(temp, "lsl")) return LSL;
+  else {
+    temp[1] = 0;
+    if (equals(temp, "b")) return B;
+    else return ERR;
+  }
+}
+
+Condition condCheck(char* opcode)
+{
+  char temp[2];
+  Type type = typeCheck(opcode);
+  if (type == BRCH) {
+    if (strlen(opcode) == 1) {
+      return AL;
+    } else {
+      strcpy(temp, opcode + 1);
+      printf("%s\n", temp);
+      return getCondition(temp);
+    }
+  } else if (type == ERRO) {
+    printf("%s\n", "ERRO");
+    return ERR;
+  } else {
+    if (strlen(opcode) == 3) {
+      return AL;
+    } else {
+      strcpy(temp, opcode + 3);
+      printf("%s\n", temp);
+      return getCondition(temp);
+    }
+  }
+  return AL;
 }
 
 int main(int argc, char **argv) {
   FILE *src;
   FILE *dest;
   char *buffer = calloc(BUFFER_SIZE, sizeof(char));
-  uint8_t locctr = 0; // Starting address for memory allocations
+  uint32_t instruction = 0; // Temporary instruction
+  uint32_t locctr = 0; // Starting address for memory allocations
   SymbolTable symtab = {0, calloc(DEFAULT_MAP_SIZE, sizeof(Symbol))};
   int size = 0; // Current pointer for symtab
 
@@ -54,10 +204,11 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  /* Opens the file */
+  /* Opens the files */
   src = fopen(argv[1], "r");
+  dest = fopen(argv[2], "wb");
 
-  /* Checks the file exists */
+  /* Checks the read file exists */
   if (src == NULL) {
     fprintf(stderr, "File Load Failure\n");
     return EXIT_FAILURE;
@@ -84,79 +235,77 @@ int main(int argc, char **argv) {
           symtab.size = size;
         }
       } else {
-        if (optabCheck(opcode)) {
-          printf("Opcode: %s, operands: %s, type: %u\n", opcode, operands, typeCheck(opcode));
-          locctr+=32;
-        } else {
-          if (strlen(opcode) == 3) {
-            opcode[1] = 0;
-          } else if (strlen(opcode) == 5){
-            opcode[3] = 0;
-          } else {
-            printf("Unrecognized opcode %s\n", opcode);
-          }
-          if (optabCheck(opcode)) {
-            printf("Opcode: %s, operands: %s, type: %u\n", opcode, operands, typeCheck(opcode));
-            locctr+=32;
-          } else {
-                    printf("Unrecognized opcode %s\n", opcode);
-          }
+        if (typeCheck(opcode) != ERRO) {
+          printf("Optype: %u, Condition: %u\n", typeCheck(opcode), condCheck(opcode));
+          locctr += 32;
         }
       }
     }
   }
 
+  fseek(src, 0, SEEK_SET); // Reset file the pointer
+  locctr = 0; // Resets the location counter
+
   printSymtab(symtab);
-
-  uint32_t *bmem = calloc(16384, sizeof(uint32_t)); //Text Record
-  int *pmem = 0;
-
-  dest = fopen(argv[2], "w!");
 
 
   /* Translation Loop */
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
-    uint32_t instr;
-    char *opcode = strtok(buffer, " ");
-    char *operands = strtok(NULL, " ");
-    char *op1;
-    char *op2;
-    char *op3;
-    char *op4;
-    int type = typeCheck(opcode);
-    if (*opcode != ';') {
-      if (optabcheck(opcode)) {
-        if (opcode[strlen(opcode) - 2] == ';') {
-          opcode[strlen(opcode) - 2] = 0;
-          printf("Label = %s\n", opcode);
-          if (symtabContains(symtab, opcode)) {
-            if (type == 2) {
-              bmem = getKeyVal(symtab, opcode) | optab(opcode);
-            } else if (type == 3) {
-              bmem = getKeyVal(symtab, opcode) | optab(opcode);
-            }
-          } else {
-            bmem = optab(opcode);
-          }
-        } else {
-          bmem = optab(opcode);
-          instr |= getCond(opcode);
-          //gotta implement it for each time of instruction ffs
-          //use helper method
-        }
-      } else if (opcode == "byte" || opcode == "word") {
-        bmem = optab(opcode);
-        if ( > strlen(bmem)) { //overflow check cba right now
-          //TODO: write bmem to object program
-          free(bmem);
-        } strcat(bmem, opcode);
+    instruction = 0; // Resets the instruction;
+    char *_opcode = strtok(buffer, " ");
+    OpCode opcode = getOpcode(_opcode);
+    char *optemp = strtok(NULL, " ");
+    char *operands[4]; // max 4 operands
+    int expected = noOfArgs(opcode);
+    char *operand = strtok(optemp, ", ");
+    for (int i = 0; i < expected; i++) {
+      assert(operand != NULL);
+      if (operand[0] == ';') {
+        operands[i] = operand;
+        operand = strtok(NULL, ", ");
       }
-      fputs("lisitng line", dest); //TODO: write listing line
-      fgets(bmem, strlen(bmem), src); //read next input line
     }
-    fwrite(bmem, sizeof(char), sizeof(bmem), dest);
+
+    // TODO: Convert labels into memory addresses here using SYMTAB
+
+    if ((0 <= opcode && opcode <= 5) || opcode == 15) {
+      instruction = compute(opcode, operands[0], operands[1], operands[2]);
+    }
+    else if (opcode == 6) {
+      instruction = move(operands[0], operands[1]);
+    }
+    else if (7 <= opcode && opcode <= 9) {
+      instruction = flagger(opcode, operands[0], operands[1]);
+    }
+    else if (opcode == 10) {
+      instruction = mul(operands[0], operands[1], operands[2]);
+    }
+    else if (opcode == 11) {
+      instruction = mla(operands[0], operands[1], operands[2], operands[3]);
+    }
+    else if (12 <= opcode && opcode <= 13) {
+      instruction = sdt(opcode, operands[0], operands[1], locctr);
+    }
+    else if (opcode == 14) {
+      instruction = branch(operands[0], locctr);
+    }
+    else return EXIT_FAILURE;
+    //instruction || 0; // TODO: or with conditions here
+
+    uint8_t instr_array[4];
+    instr_array[0] = 0xFF & instruction;
+    instr_array[1] = (0xFF00 & instruction) >> 8;
+    instr_array[2] = (0xFF0000 & instruction) >> 16;
+    instr_array[3] = (0xFF000000 & instruction) >> 24;
+
+    fwrite(instr_array, sizeof(uint8_t), 4, dest);
+
+    locctr += 32;
   }
+
+
   fclose(src);
+  fclose(dest);
   free(buffer);
 }
 
@@ -247,5 +396,61 @@ int optabCheck(char* a)
   if(optab(a) != -1) {
     return 1;
   }
+  return 0;
+}
+
+/*** FILL OUT YOUR OWN INSTRUCTIONS ください　どうもありがとうございました。***/
+/*** Data Processing Instructions ***/
+uint32_t compute(OpCode opcode, char *rd, char *rn, char *operand2)
+{
+  // TODO: return 28-bit instruction for add, eor, sub, rsb, add, orr
+  return 0;
+}
+
+uint32_t move(char *rd, char *operand2)
+{
+  // TODO: return 28-bit instruction for mov
+  return 0;
+}
+
+uint32_t flagger(OpCode opcode, char *rn, char *operand2)
+{
+  // TODO: return 28-bit instruction for tst, teq, cmp
+  return 0;
+}
+
+uint32_t shift(char *rn, char *expression)
+{
+  // TODO: return 28-bit instruction for lsl
+  return 0;
+}
+
+/*** Multiply Instructions ***/
+uint32_t mul(char *rd, char *rm, char *rs)
+{
+  // TODO: return 28-bit instruction for mul
+  return 0;
+}
+
+uint32_t mla(char *rd, char *rm, char *rs, char *rn)
+{
+  // TODO: return 28-bit instruction for mla
+  return 0;
+}
+
+/*** Single Data Transfer Instructions ***/
+uint32_t sdt(OpCode opcode, char *rd, char *address, int locctr)
+{
+  // TODO: return 28-bit instruction for ldr, str
+  // locctr is the location of the instruction in memory, hence = PC - 8.
+  return 0;
+}
+
+/*** Branch Instructions ***/
+uint32_t branch(char *address, int locctr)
+{
+  // TODO: return 28-bit instruction for ldr, str
+  // address will be fed in from the symbol table.
+  // locctr is the location of the instruction in memory, hence = PC - 8.
   return 0;
 }

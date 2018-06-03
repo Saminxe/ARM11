@@ -1,0 +1,70 @@
+data_immediate:
+  add r1, r2, #1
+  sub r1, r2, #1
+  rsb r1, r2, #1
+  and r1, r2, #1
+  eor r1, r2, #1
+  orr r1, r2, #1
+  mov r1, #1
+  tst r1, #1
+  teq r1, #1
+  cmp r1, #1
+data_regs:
+  add r1, r2, r3, lsl r4
+  sub r1, r2, r3, asr #1
+  rsb r1, r2, r3, lsr r4
+  and r1, r2, r3, ror #1
+  eor r1, r2, r3
+  orr r1, r2, r3, lsl r4
+  mov r1, r2, asr #1
+  tst r1, r2, lsr r3
+  teq r1, r2, ror #1
+  cmp r1, r3
+data_conditionals:
+  mov r1, #1
+  cmp r1, #1
+  addeq r1, r2, #1 ;executed
+  subne r1, r2, #1 ;not executed
+  rsbge r1, r2, #1 ;executed
+  andlt r1, r2, #1 ;not executed
+  eorgt r1, r2, #1 ;not executed
+  orrle r1, r2, #1 ;executed
+  addal r1, r2, #1 ;executed
+mult:
+  mov r1, #1
+  cmp r1, #1
+  mul r1, r2, r3
+  mla r1, r2, r3, r4
+mult_cond:
+  muleq r1, r2, r3
+  mlane r1, r2, r3, r4
+  mulge r1, r2, r3
+  mlalt r1, r2, r3, r4
+  mulgt r1, r2, r3
+  mlale r1, r2, r3, r4
+  mulal r1, r2, r3
+sdt:
+  ldr r0, =0x1
+  str r0, [r1, r2]
+  ldr r0, 0x0FFFFFFF
+  str r0, [r1], #1
+  ldr r0, [r1, r2, lsl #1]
+  str r0, [r1], r2, lsr #1
+branch:
+  b branch_cond
+branch_a:
+  mov r1, #1
+  cmp r1, #1
+  bne branch_a
+  beq branch_b
+branch_b:
+  cmp r1, #2
+  ble branch_b
+  bgt branch_c
+branch_c:
+  cmp r1, #0
+  bge branch_c
+  blt special
+special:
+  lsl r1 #2
+  andeq r0, r0, r0
