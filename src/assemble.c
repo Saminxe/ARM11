@@ -59,12 +59,13 @@ void printInstruction(OpCode opcode, Condition cond, char **args)
   else if (cond == LT) printf("lt ");
   else if (cond == GT) printf("gt ");
   else if (cond == LE) printf("le ");
-  else if (cond == AL) printf("al ");
+  else if (cond == AL) printf(" ");
   else printf("ERROR ");
   do {
-    printf("%s", args[i]);
+    printf("%s ", args[i]);
     i++;
   } while (i < expectedArgs);
+  printf("\n");
 }
 
 /* Debug End */
@@ -124,15 +125,23 @@ Type typeCheck(char *opcode) {
   return ERRO;
 }
 
-Condition getCondition(char *cond)
+Condition getCondition(char *opcode)
 {
+  char cond[5];
+  if (typeCheck(opcode) == BRCH)
+    strcpy(cond, opcode + 1);
+  else if (typeCheck(opcode) == ERRO)
+    return ER;
+  else
+    strcpy(cond, opcode + 3);
+  cond[2] = 0;
   if (equals(cond, "eq")) return EQ;
   else if (equals(cond, "ne")) return NE;
   else if (equals(cond, "ge")) return GE;
   else if (equals(cond, "lt")) return LT;
   else if (equals(cond, "gt")) return GT;
   else if (equals(cond, "le")) return LE;
-  else if (equals(cond, "al")) return AL;
+  else if (equals(cond, "al") || (strlen(cond)) == 0) return AL;
   else return ER;
 }
 
@@ -140,11 +149,12 @@ OpCode getOpcode(char* opcode)
 {
   char temp[3];
   strcpy(temp, opcode);
+  temp[3] = 0;
   if (equals(temp, "add")) return ADD;
   else if (equals(temp, "sub")) return SUB;
   else if (equals(temp, "rsb")) return RSB;
   else if (equals(temp, "and")) return AND;
-  else if (equals(temp, "eor")) return ORR;
+  else if (equals(temp, "eor")) return EOR;
   else if (equals(temp, "orr")) return ORR;
   else if (equals(temp, "mov")) return MOV;
   else if (equals(temp, "tst")) return TST;
@@ -224,7 +234,6 @@ int main(int argc, char **argv) {
     if (*opcode != ';') { // If it is not a comment
       if (opcode[strlen(opcode) - 2] == ':') { // If it is a label
         opcode[strlen(opcode) - 2] = 0;
-        printf("Label = %s\n", opcode);
         if (symtabContains(symtab, opcode)) { // If the label is in symbtab
           fprintf(stderr, "Duplicate symbol, aborting assembly.\n");
           return -1;
@@ -236,7 +245,6 @@ int main(int argc, char **argv) {
         }
       } else {
         if (typeCheck(opcode) != ERRO) {
-          printf("Optype: %u, Condition: %u\n", typeCheck(opcode), condCheck(opcode));
           locctr += 32;
         }
       }
@@ -253,54 +261,59 @@ int main(int argc, char **argv) {
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
     instruction = 0; // Resets the instruction;
     char *_opcode = strtok(buffer, " ");
-    OpCode opcode = getOpcode(_opcode);
-    char *optemp = strtok(NULL, " ");
-    char *operands[4]; // max 4 operands
-    int expected = noOfArgs(opcode);
-    char *operand = strtok(optemp, ", ");
-    for (int i = 0; i < expected; i++) {
-      assert(operand != NULL);
-      if (operand[0] == ';') {
-        operands[i] = operand;
-        operand = strtok(NULL, ", ");
+    if (*_opcode != ';') {
+      if (_opcode[strlen(_opcode) - 2] == ':') {
+        _opcode[strlen(_opcode) - 2] = 0;
+        uint32_t labelAddress = getKeyVal(symtab, _opcode);
+        printf("%s has address %u\n", _opcode, labelAddress);
+      } else {
+        OpCode opcode = getOpcode(_opcode);
+        Condition cond = getCondition(_opcode);
+        char *_operands = strtok(NULL, "");
+        char *operands[4];
+        operands[0] = strtok(_operands, ", ");
+        for (int i = 1; i < noOfArgs(opcode) - 1; i++) {
+          operands[i] = strtok(NULL, ", ");
+        }
+        if (noOfArgs(opcode) >= 2)
+          operands[noOfArgs(opcode) - 1] = strtok(NULL, ";");
+        printInstruction(opcode, cond, operands);
+
+        if ((0 <= opcode && opcode <= 5) || opcode == 15) {
+          instruction = compute(opcode, operands[0], operands[1], operands[2]);
+        }
+        else if (opcode == 6) {
+          instruction = move(operands[0], operands[1]);
+        }
+        else if (7 <= opcode && opcode <= 9) {
+          instruction = flagger(opcode, operands[0], operands[1]);
+        }
+        else if (opcode == 10) {
+          instruction = mul(operands[0], operands[1], operands[2]);
+        }
+        else if (opcode == 11) {
+          instruction = mla(operands[0], operands[1], operands[2], operands[3]);
+        }
+        else if (12 <= opcode && opcode <= 13) {
+          instruction = sdt(opcode, operands[0], operands[1], locctr);
+        }
+        else if (opcode == 14) {
+          instruction = branch(operands[0], locctr);
+        }
+        else return EXIT_FAILURE;
+        //instruction || 0; // TODO: or with conditions here
+
+        uint8_t instr_array[4];
+        instr_array[0] = 0xFF & instruction;
+        instr_array[1] = (0xFF00 & instruction) >> 8;
+        instr_array[2] = (0xFF0000 & instruction) >> 16;
+        instr_array[3] = (0xFF000000 & instruction) >> 24;
+
+        fwrite(instr_array, sizeof(uint8_t), 4, dest);
+
+        locctr += 32;
       }
     }
-
-    // TODO: Convert labels into memory addresses here using SYMTAB
-
-    if ((0 <= opcode && opcode <= 5) || opcode == 15) {
-      instruction = compute(opcode, operands[0], operands[1], operands[2]);
-    }
-    else if (opcode == 6) {
-      instruction = move(operands[0], operands[1]);
-    }
-    else if (7 <= opcode && opcode <= 9) {
-      instruction = flagger(opcode, operands[0], operands[1]);
-    }
-    else if (opcode == 10) {
-      instruction = mul(operands[0], operands[1], operands[2]);
-    }
-    else if (opcode == 11) {
-      instruction = mla(operands[0], operands[1], operands[2], operands[3]);
-    }
-    else if (12 <= opcode && opcode <= 13) {
-      instruction = sdt(opcode, operands[0], operands[1], locctr);
-    }
-    else if (opcode == 14) {
-      instruction = branch(operands[0], locctr);
-    }
-    else return EXIT_FAILURE;
-    //instruction || 0; // TODO: or with conditions here
-
-    uint8_t instr_array[4];
-    instr_array[0] = 0xFF & instruction;
-    instr_array[1] = (0xFF00 & instruction) >> 8;
-    instr_array[2] = (0xFF0000 & instruction) >> 16;
-    instr_array[3] = (0xFF000000 & instruction) >> 24;
-
-    fwrite(instr_array, sizeof(uint8_t), 4, dest);
-
-    locctr += 32;
   }
 
 
@@ -321,31 +334,16 @@ int symtabContains(SymbolTable m, char *k) {
 
 
 
-uint8_t getKeyVal(SymbolTable m, char *k) {
+uint32_t getKeyVal(SymbolTable m, char *k) {
   for (int i = 0; i < m.size; i++) {
-    if (m.symbols[i].name == k)
+    if (equals(m.symbols[i].name, k))
       return m.symbols[i].val;
   }
   return -1;
 }
 
-
-//don't touch this Sam is writing bad code
-
-//check if strings are equals
-//switch statement on char array
-//return the machine code
-
 int equals(char *a, char *b) {
-  int length = strlen(a);
-  int length2 = strlen(b);
-  if (length != length2) {
-    return 0;
-  }
-  for (int i = 0; i < length; i++) {
-    if (a[i] != b[i]) return 0;
-  }
-  return 1;
+  return (strcmp(a, b) == 0);
 }
 
 
