@@ -1,6 +1,6 @@
 #include "assemble.h"
 
-/* Debug */
+/*** Debugging tools ***/
 void printSymtab(SymbolTable s)
 {
   int i = 0;
@@ -68,8 +68,7 @@ void printInstruction(OpCode opcode, Condition cond, char **args, int set)
   if (set) printf(" SET CPSR");
   printf("\n");
 }
-
-/* Debug End */
+/*** End of debugging tools ***/
 
 int contains(char *string, char c) {
   int length = strlen(string);
@@ -255,23 +254,23 @@ int main(int argc, char **argv) {
   SymbolTable symtab = {0, calloc(DEFAULT_MAP_SIZE, sizeof(Symbol))};
   int size = 0; // Current pointer for symtab
 
-  /* Tests for correct amount of input variables */
+  // Tests for correct amount of input variables
   if (argc != 3) {
     fprintf(stderr, "Usage = %s input output\n", argv[0]);
     return EXIT_FAILURE;
   }
 
-  /* Opens the files */
+  // Opens the files
   src = fopen(argv[1], "r");
   dest = fopen(argv[2], "wb");
 
-  /* Checks the read file exists */
+  // Checks the read file exists
   if (src == NULL) {
     fprintf(stderr, "File Load Failure\n");
     return EXIT_FAILURE;
   }
 
-  /* Symbol Tablulation Loop */
+  // Symbol Tabulation Loop
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
     char *_opcode = strtok(buffer, " ");
     char *operands = strtok(NULL, " ");
@@ -306,7 +305,7 @@ int main(int argc, char **argv) {
   printSymtab(symtab);
   printf("\n");
 
-  /* Translation Loop */
+  // Translation Loop
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
     instruction = 0; // Resets the instruction;
     char *_opcode = strtok(buffer, " ");
