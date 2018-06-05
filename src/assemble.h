@@ -14,6 +14,7 @@ typedef enum _instr{DATA, MULT, SDTR, BRCH, ERRO = -1} Type;
 typedef enum _cond{EQ, NE, GE, LT, GT, LE, AL, ER = -1} Condition;
 typedef enum _opcode{ERR = -1, ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP,
   MUL, MLA, LDR, STR, B, LSL} OpCode;
+typedef enum {ShSL, ShLSR, ShASR, ShROR, ShERR} Shift;
   // All possible opcodes excluding conditions.
 
 typedef struct {

@@ -278,7 +278,7 @@ int main(int argc, char **argv) {
       operands[strlen(operands) - 1] = 0;
     }
     if (*_opcode != ';') { // If it is not a comment
-      if (isLabel(_opcode)) { // If it is a label
+      if (contains(_opcode, ':')) { // If it is a label
         char opcode[DEFAULT_STRLEN];
         strcpy(opcode, isLabel(_opcode));
         if (symtabContains(symtab, opcode)) { // If the label is in symbtab
@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
     instruction = 0; // Resets the instruction;
     char *_opcode = strtok(buffer, " ");
     if (*_opcode != ';') {
-      if (isLabel(_opcode)) {
+      if (contains(_opcode, ':')) {
         char opcode[DEFAULT_STRLEN];
         strcpy(opcode, isLabel(_opcode));
         uint32_t labelAddress = getKeyVal(symtab, opcode);
@@ -326,9 +326,13 @@ int main(int argc, char **argv) {
           operands[i] = strtok(NULL, ", ");
         }
 
-        if (noOfArgs(opcode) >= 2)
-          operands[noOfArgs(opcode) - 1] = strtok(NULL, "\n;") + 1;
+        if (noOfArgs(opcode) >= 2) {
+          char *final = strtok(NULL, "\n;");
+          int shift = 0;
+          if (*final == ' ') shift = 1;
+          operands[noOfArgs(opcode) - 1] =  final + shift;
           // magic 1 saves the day again
+        }
 
         printInstruction(opcode, cond, operands, set);
 
@@ -370,7 +374,6 @@ int main(int argc, char **argv) {
     }
   }
 
-
   fclose(src);
   fclose(dest);
   free(buffer);
@@ -402,8 +405,48 @@ int equals(char *a, char *b) {
 /*** Data Processing Instructions ***/
 uint32_t compute(OpCode opcode, char *rd, char *rn, char *operand2, int set)
 {
-  // TODO: return 28-bit instruction for add, eor, sub, rsb, add, orr
-  return 0;
+  uint32_t instruction = 0;
+  uint8_t Rd = getRegister(rd);
+  uint8_t Rn = getRegister(rn);
+  uint32_t operand2;
+  if (*operand2 == '#') {
+    char *ptr;
+    long int imm = strtol(operand2 + 1, &ptr, 10);
+    printf("%lu\n", imm);
+
+  } else {
+    char rm[3];
+    char shift[DEFAULT_STRLEN];
+    //int registerShift;
+    sscanf(operand2, "%[^, ] %*[^ ] %[^\n]", rm, shift);
+    printf("%s, %s\n", rm, shift);
+    if (strlen(shift) != 0) {
+      printf("%s\n", "not null");
+      char _shift_type[3];
+      Shift shift_type;
+      char _shift_operand[DEFAULT_STRLEN];
+      sscanf(shift, "%[^ ] %s", _shift_type, _shift_operand);
+      printf("%s, %s\n", _shift_type, _shift_operand);
+      shift_type = getShift(_shift_type);
+      if (*_shift_operand == '#') {
+
+      }
+    }
+
+  }
+  instruction |= (Rd << 12);
+  instruction |= (Rn << 16);
+  instruction |= operand2;
+  return instruction;
+}
+
+Shift getShift(char *shift)
+{
+  if (equals(shift, "lsl")) return ShSL;
+  else if (equals(shift, "lsr")) return ShLSR;
+  else if (equals(shift, "asr")) return ShASR;
+  else if (equals(shift, "ror")) return ShROR;
+  else return ShERR;
 }
 
 uint32_t move(char *rd, char *operand2, int set)
