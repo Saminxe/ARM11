@@ -542,12 +542,17 @@ uint32_t sdt(OpCode opcode, char *rd, char *rn, char *operand2, int locctr)
   // opcode is str or ldr
 }
 
+
 /*** Branch Instructions ***/
 uint32_t branch(char *label, int locctr, SymbolTable symtab)
 {
-  // TODO: return 28-bit instruction for ldr, str
+  int32_t offset = 0xA000000;
+  uint32_t address = getKeyVal(symtab, label);     // this is the converted address of the label
+  address -= locctr;
+  address += 8;
+  address = address >> 2;
+  offset |= address;
   // address will be fed in from the symbol table.
   // locctr is the location of the instruction in memory, hence = PC - 8.
-  uint32_t addr = getKeyVal(symtab, label); // this is the converted address of the label. (uncomment)
-  return 0;
+  return offset;
 }
