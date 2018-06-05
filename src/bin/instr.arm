@@ -1,5 +1,5 @@
 data_immediate:
-  add r1, r2, #1
+  add r1, r2, #0x1000
   sub r1, r2, #1
   rsb r1, r2, #1
   and r1, r2, #1
@@ -73,7 +73,7 @@ branch_b:
 branch_c:
   cmp r1, #0
   bge branch_c
-  blt special
+  blt data_conditionals
 special:
   lsl r1 #2
   andeq r0, r0, r0

@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
+#include <limits.h>
 
 #define BUFFER_SIZE 512
 #define DEFAULT_MAP_SIZE 120

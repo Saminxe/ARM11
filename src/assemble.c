@@ -401,43 +401,26 @@ int equals(char *a, char *b) {
   return (strcmp(a, b) == 0);
 }
 
-/*** FILL OUT YOUR OWN INSTRUCTIONS ください　どうもありがとうございました。***/
-/*** Data Processing Instructions ***/
-uint32_t compute(OpCode opcode, char *rd, char *rn, char *operand2, int set)
+uint32_t circularShift(int lr, uint32_t input, int n)
 {
-  uint32_t instruction = 0;
-  uint8_t Rd = getRegister(rd);
-  uint8_t Rn = getRegister(rn);
-  uint32_t operand2;
-  if (*operand2 == '#') {
-    char *ptr;
-    long int imm = strtol(operand2 + 1, &ptr, 10);
-    printf("%lu\n", imm);
-
+  const unsigned int mask = (CHAR_BIT*sizeof(input) - 1);
+  n &= mask;
+  if (lr) {
+    return (input << n) | (input >> ((-n) & mask));
   } else {
-    char rm[3];
-    char shift[DEFAULT_STRLEN];
-    //int registerShift;
-    sscanf(operand2, "%[^, ] %*[^ ] %[^\n]", rm, shift);
-    printf("%s, %s\n", rm, shift);
-    if (strlen(shift) != 0) {
-      printf("%s\n", "not null");
-      char _shift_type[3];
-      Shift shift_type;
-      char _shift_operand[DEFAULT_STRLEN];
-      sscanf(shift, "%[^ ] %s", _shift_type, _shift_operand);
-      printf("%s, %s\n", _shift_type, _shift_operand);
-      shift_type = getShift(_shift_type);
-      if (*_shift_operand == '#') {
-
-      }
-    }
-
+    return (input >> n) | (input << ((-n) & mask));
   }
-  instruction |= (Rd << 12);
-  instruction |= (Rn << 16);
-  instruction |= operand2;
-  return instruction;
+}
+
+uint32_t getRotate(uint32_t input)
+{
+  uint8_t rots = 0;
+  while (!(3 & input) && (rots <= 30)) {
+    input = circularShift(1, input, 2);
+    rots += 2;
+  }
+  if (input & (~0xFF)) return -1;
+  return (input | (rots << 7)) & 0xFFF;
 }
 
 Shift getShift(char *shift)
@@ -447,6 +430,80 @@ Shift getShift(char *shift)
   else if (equals(shift, "asr")) return ShASR;
   else if (equals(shift, "ror")) return ShROR;
   else return ShERR;
+}
+
+uint32_t processOperand2(char *operand2)
+{
+  uint32_t result = 0;
+  if (*operand2 == '#') {
+    char *ptr;
+    long int imm = strtol(operand2 + 1, &ptr, 0);
+    printf("%lu\n", imm);
+    result |= (getRotate(imm) & 0xFFF);
+    result |= (1 << 25);
+  } else {
+    char rm[3];
+    char shift[DEFAULT_STRLEN];
+    //int shift_amount;
+    sscanf(operand2, "%[^, ] %*[,] %[^\n]", rm, shift);
+    printf("%s, %s\n", rm, shift);
+    uint8_t Rm = getRegister(rm);
+    if (*shift > 32) { //if it is not trash
+      printf("%s\n", "not null");
+      char _shift_type[3];
+      Shift shift_type;
+      char _shift_operand[DEFAULT_STRLEN];
+      long int shift_operand;
+      char *shiftptr;
+      sscanf(shift, "%[^ ] %s", _shift_type, _shift_operand);
+      printf("%s, %s\n", _shift_type, _shift_operand);
+      shift_type = getShift(_shift_type);
+      switch (shift_type) {
+        case ShSL: break;
+        case ShLSR: result |= 1 << 5; break;
+        case ShASR: result |= 1 << 6; break;
+        case ShROR: result |= 3 << 5; break;
+        default: result |= 0xFFFFFFFF; break;
+      }
+      if (*_shift_operand == '#') {
+        shift_operand = strtol(_shift_operand + 1, &shiftptr, 0);
+        result |= (shift_operand & 0x1F) << 7;
+      } else {
+        shift_operand = getRegister(_shift_operand);
+        result |= (shift_operand << 8) | 1;
+      }
+    } else {
+      result = Rm;
+    }
+  }
+  return (result & 0xFFF);
+}
+
+/*** FILL OUT YOUR OWN INSTRUCTIONS ください　どうもありがとうございました。***/
+/*** Data Processing Instructions ***/
+uint32_t compute(OpCode opcode, char *rd, char *rn, char *operand2, int set)
+{
+  uint32_t instruction = 0;
+  uint32_t op2 = 0;
+  uint8_t opc;
+  switch (opcode) {
+    case AND: opc = 0x0; break;
+    case EOR: opc = 0x1; break;
+    case SUB: opc = 0x2; break;
+    case RSB: opc = 0x3; break;
+    case ADD: opc = 0x4; break;
+    case ORR: opc = 0xC; break;
+    default: opc = 0xF; break;
+  }
+  op2 = processOperand2(operand2);
+  uint8_t Rd = getRegister(rd);
+  uint8_t Rn = getRegister(rn);
+  instruction |= (opc << 21);
+  instruction |= op2;
+  if (set) instruction |= (1 << 20);
+  instruction |= (Rd << 12);
+  instruction |= (Rn << 16);
+  return instruction;
 }
 
 uint32_t move(char *rd, char *operand2, int set)
@@ -508,8 +565,10 @@ uint32_t mla(char *rd, char *rm, char *rs, char *rn, int set)
 }
 
 /*** Single Data Transfer Instructions ***/
+
 uint32_t sdt(OpCode opcode, char *rd, char *rn, char *operand2, int locctr)
 {
+  /*
   uint8_t Rd = getRegister(rd);
   uint8_t Rn = getRegister(rn);
   uint32_t instruction = 0x4000000;
@@ -538,7 +597,9 @@ uint32_t sdt(OpCode opcode, char *rd, char *rn, char *operand2, int locctr)
   // TODO: return 28-bit instruction for ldr, str
   // locctr is the location of the instruction in memory, hence = PC - 8.
   // opcode is str or ldr
+  */return -1;
 }
+
 
 
 /*** Branch Instructions ***/
