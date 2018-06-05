@@ -513,25 +513,23 @@ uint32_t sdt(OpCode opcode, char *rd, char *rn, char *operand2, int locctr)
   uint8_t Rd = getRegister(rd);
   uint8_t Rn = getRegister(rn);
   uint32_t instruction = 0x4000000;
-  PC = locctr + 8;
   char *RnToken;
   char *exprToken;
 
   int temp = sscanf(operand2, "%[,], %s", RnToken, exprToken);
   if (opcode == 12) {        //12 = LDR, 13 = STR
     instruction |= (1<<20);
-    if ((operand2 >> (strlen(operand2) - 1)) == '=') {
-      if (operand2 < 0xFF) {
+    if (operand2[0] == '=') {
+      if (operand2 < 0xFF) {                    //value of operand2, TODO
         instruction |= move(rd, operand2, 1);
       }
-      instruction |= address;
-      instruction |= PC;
+      instruction |= operand2;
       instruction |= (Rd << 12);
       instruction |= (Rn << 16);
     } else if (strlen(RnToken) == 5) {          //[Rn],    P=0
-      Rn = Rn << operand2;
+      Rn = Rn << operand2;                      //value of operand2, TODO
     } else {                                    //[Rn,     P=1
-      Rn = Rn << operand2;
+      Rn = Rn << operand2;                      //value of operand2, TODO
       instruction |= 0x1000000;                 //setting P flag
     }
     instruction |= 0x100000;                    //setting L flag
