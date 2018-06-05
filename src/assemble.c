@@ -348,7 +348,7 @@ int main(int argc, char **argv) {
           instruction = mla(operands[0], operands[1], operands[2], operands[3], set);
         }
         else if (12 <= opcode && opcode <= 13) {
-          instruction = sdt(opcode, operands[0], operands[1], locctr);
+          instruction = sdt(opcode, operands[0], operands[1], operands[2],  locctr);
         }
         else if (opcode == 14) {
           instruction = branch(operands[0], locctr, symtab);
@@ -465,11 +465,38 @@ uint32_t mla(char *rd, char *rm, char *rs, char *rn, int set)
 }
 
 /*** Single Data Transfer Instructions ***/
-uint32_t sdt(OpCode opcode, char *rd, char *address, int locctr)
+uint32_t sdt(OpCode opcode, char *rd, char *rn, char *operand2, int locctr)
 {
+  uint8_t Rd = getRegister(rd);
+  uint8_t Rn = getRegister(rn);
+  uint32_t instruction = 0x4000000;
+  PC = locctr + 8;
+  char *RnToken;
+  char *exprToken;
+
+  int temp = sscanf(operand2, "%[,], %s", RnToken, exprToken);
+  if (opcode == 12) {        //12 = LDR, 13 = STR
+    instruction |= (1<<20);
+    if ((operand2 >> (strlen(operand2) - 1)) == '=') {
+      if (operand2 < 0xFF) {
+        instruction |= move(rd, operand2, 1);
+      }
+      instruction |= address;
+      instruction |= PC;
+      instruction |= (Rd << 12);
+      instruction |= (Rn << 16);
+    } else if (strlen(RnToken) == 5) {          //[Rn],    P=0
+      Rn = Rn << operand2;
+    } else {                                    //[Rn,     P=1
+      Rn = Rn << operand2;
+      instruction |= 0x1000000;                 //setting P flag
+    }
+    instruction |= 0x100000;                    //setting L flag
+  }
+  return instruction;
   // TODO: return 28-bit instruction for ldr, str
   // locctr is the location of the instruction in memory, hence = PC - 8.
-  return 0;
+  // opcode is str or ldr
 }
 
 /*** Branch Instructions ***/
@@ -478,6 +505,6 @@ uint32_t branch(char *label, int locctr, SymbolTable symtab)
   // TODO: return 28-bit instruction for ldr, str
   // address will be fed in from the symbol table.
   // locctr is the location of the instruction in memory, hence = PC - 8.
-  //uint32_t addr = getKeyVal(symtab, label); // this is the converted address of the label. (uncomment)
+  uint32_t addr = getKeyVal(symtab, label); // this is the converted address of the label. (uncomment)
   return 0;
 }
