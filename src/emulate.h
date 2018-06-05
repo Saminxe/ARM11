@@ -13,6 +13,8 @@
 #define C 0x2
 #define V 0x1
 
+#define MAX_MEMORY_ADDRESS 65536
+
 typedef struct {
   uint8_t *memory;
   uint32_t *registers;

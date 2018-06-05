@@ -27,7 +27,7 @@ void output(State state)
     if (huiyi != 0)
       printf("0x%08x: 0x%08x\n", i, huiyi);
     i += 4;
-  } while (i < 65536);
+  } while (i < MAX_MEMORY_ADDRESS);
 }
 /*** End of debugging tools ***/
 
@@ -92,7 +92,7 @@ void updateFlags(uint32_t result, int carry, State state) {
 // Loads 32-bit digit from memory address
 uint32_t load(State state, uint8_t select)
 {
-  assert(0 <= select && select <= 65536);
+  assert(0 <= select && select <= MAX_MEMORY_ADDRESS);
   return state.memory[select] |
     state.memory[select + 1] << 8 |
     state.memory[select + 2] << 16 |
@@ -321,12 +321,30 @@ void multiply(State state, uint32_t instr)
   }
 }
 
-void singleDataTransfer(State state, uint32_t instr)
-{
+// Return 1 if address out of bound, 0 otherwise.
+int checkMemoryBounds(uint32_t address) {
+  if (address > MAX_MEMORY_ADDRESS &&
+    address != 0x20200000 &&
+    address != 0x20200004 &&
+    address != 0x20200008 &&
+    address != 0x2020001C &&
+    address != 0x20200028) {
+    printf("Error: Out of bounds memory access at address 0x%08x\n", address);
+    return 1;
+  }
+  return 0;
+}
+
+void singleDataTransfer(State state, uint32_t instr) {
   uint8_t Rn = (instr & 0x000F0000) >> 16; // Rn
   uint8_t Rd = (instr & 0x0000F000) >> 12; // Rd
+  int I = getInstrBit(instr, 25);
+  int P = getInstrBit(instr, 24);
+  int U = getInstrBit(instr, 23);
+  int L = getInstrBit(instr, 20);
   uint32_t offset = 0;
-  if (getInstrBit(instr, 25) == 1) {
+  uint32_t tempReg = state.registers[Rn];
+  if (I) {
     // I = 1; interpret offset as shifted register
     uint8_t rm = instr & 0x0000000F;
     uint32_t value = state.registers[rm];
@@ -344,52 +362,39 @@ void singleDataTransfer(State state, uint32_t instr)
     // I = 0; interpret offset as unsigned immediate offset
     offset = instr & 0x00000FFF;
   }
-  uint32_t tempReg = state.registers[Rn];
-  if (getInstrBit(instr, 23) == 1) {
+  if (U) {
     // U = 1; offset added to base register
     tempReg += offset;
   } else {
     // U = 0; offset subtracted from base register
     tempReg -= offset;
   }
-  //printf("After: %u\n", tempReg);
-  if (getInstrBit(instr, 20) == 1) {
-    // L = 1; word loaded from memory
-    if (getInstrBit(instr, 24) == 1) {
-      // P = 1; offset is added/subtracted to base register before transferring data
-      if (tempReg > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", tempReg);
-      else {
+  // Check addresses are not out of bound
+  if (!(checkMemoryBounds(tempReg) || checkMemoryBounds(state.registers[Rn]))) {
+    if (L) {
+      // L = 1; word loaded from memory
+      if (P) {
+        // P = 1; offset
         state.registers[Rd] = load(state, tempReg);
-      }
-    } else {
-      // P = 0; offset is added/subtracted to base register after transferring data
-      if (state.registers[Rn] > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", state.registers[Rn]);
-      else {
+      } else {
+        // P = 0; offset is added/subtracted to base register after transferring data
         state.registers[Rd] = load(state, state.registers[Rn]);
         state.registers[Rn] = tempReg;
       }
-    }
-  } else {
-    // L = 0; word stored into memory
-    if (getInstrBit(instr, 24) == 1) {
-      // P = 1; offset is added/subtracted to base register before transferring data
-      if (tempReg > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", tempReg);
-      else {
+    } else if (P) {
+        // L = 0; word stored into memory
+        // P = 1; offset is added/subtracted to base register before transferring data
         state.memory[tempReg] = state.registers[Rd] & 0x000000FF;
         state.memory[tempReg + 1] = (state.registers[Rd] & 0x0000FF00) >> 8;
         state.memory[tempReg + 2] = (state.registers[Rd] & 0x00FF0000) >> 16;
         state.memory[tempReg + 3] = (state.registers[Rd] & 0xFF000000) >> 24;
-      }
     } else {
-      // P = 0; offset is added/subtracted to base register after transferring data
-      if (state.registers[Rn] > 65536) printf("Error: Out of bounds memory access at address 0x%08x\n", state.registers[Rn]);
-      else {
+        // P = 0; offset is added/subtracted to base register after transferring data
         state.memory[state.registers[Rn]] = state.registers[Rd] & 0x000000FF;
         state.memory[state.registers[Rn] + 1] = (state.registers[Rd] & 0x0000FF00) >> 8;
         state.memory[state.registers[Rn] + 2] = (state.registers[Rd] & 0x00FF0000) >> 16;
         state.memory[state.registers[Rn] + 3] = (state.registers[Rd] & 0xFF000000) >> 24;
         state.registers[Rn] = tempReg;
-      }
     }
   }
 }
@@ -439,13 +444,13 @@ int process(State state)
     }
     fetched = load(state, state.registers[PC]);
     state.registers[PC] += 4;
-  } while (state.registers[PC] < 65536 && decoded != 0);
+  } while (state.registers[PC] < MAX_MEMORY_ADDRESS && decoded != 0);
   return 0;
 }
 
 int main(int argc, char **argv)
 {
-  State state = {(uint8_t *) calloc(65536, sizeof(char)),
+  State state = {(uint8_t *) calloc(MAX_MEMORY_ADDRESS, sizeof(char)),
       (uint32_t *) calloc(17, sizeof(long))}; // Allocate the machine state
   FILE *proc; // Allocate the stream to be read
   int procSize; // Initialize the size of the file
@@ -464,6 +469,11 @@ int main(int argc, char **argv)
   fseek(proc, 0, SEEK_SET); // Reset the seeker
   fread(state.memory, sizeof(uint8_t), procSize, proc); // Read the file into memory
   succ = process(state); // Call the pipeline loop
+  /* Part 3:
+   * write mem[0x2020 0004] | 0x0004 0000 into memory address 0x2020 0004‬ to set gpio 16 to output
+   * 0x2020 0028 to clear, 0x2020 001C to set (turn on)
+   * clear gpio 16: write 0x‭8000‬ into 0x2020 0028, to turn on write 0x8000 to 0x2020 001C
+   */
   output(state); // Print the result of the pipeline
   free(state.memory); // Free the memory
   free(state.registers); // Free the registers
