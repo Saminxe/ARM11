@@ -90,13 +90,20 @@ void updateFlags(uint32_t result, int carry, State state) {
 }
 
 // Loads 32-bit digit from memory address
-uint32_t load(State state, uint8_t select)
-{
-  assert(0 <= select && select <= MAX_MEMORY_ADDRESS);
-  return state.memory[select] |
-    state.memory[select + 1] << 8 |
-    state.memory[select + 2] << 16 |
-    state.memory[select + 3] << 24;
+uint32_t load(State state, uint32_t select) {
+  if (0 <= select && select <= MAX_MEMORY_ADDRESS) {
+    return state.memory[select] |
+      state.memory[select + 1] << 8 |
+      state.memory[select + 2] << 16 |
+      state.memory[select + 3] << 24;
+  } else if (select == 0x20200000) {
+    printf("One GPIO pin from 0 to 9 has been accessed\n");
+  } else if (select == 0x20200004) {
+    printf("One GPIO pin from 10 to 19 has been accessed\n");
+  } else if (select == 0x20200008) {
+    printf("One GPIO pin from 20 to 29 has been accessed\n");
+  }
+  return select;
 }
 
 // Return bit at given position in instr.
@@ -369,12 +376,13 @@ void singleDataTransfer(State state, uint32_t instr) {
     // U = 0; offset subtracted from base register
     tempReg -= offset;
   }
+  // printf("Tempreg: %u\n", tempReg);
   // Check addresses are not out of bound
   if (!(checkMemoryBounds(tempReg) || checkMemoryBounds(state.registers[Rn]))) {
     if (L) {
       // L = 1; word loaded from memory
       if (P) {
-        // P = 1; offset
+        // P = 1; offset is added/subtracted to base register before transferring data
         state.registers[Rd] = load(state, tempReg);
       } else {
         // P = 0; offset is added/subtracted to base register after transferring data
@@ -382,19 +390,57 @@ void singleDataTransfer(State state, uint32_t instr) {
         state.registers[Rn] = tempReg;
       }
     } else if (P) {
-        // L = 0; word stored into memory
-        // P = 1; offset is added/subtracted to base register before transferring data
-        state.memory[tempReg] = state.registers[Rd] & 0x000000FF;
-        state.memory[tempReg + 1] = (state.registers[Rd] & 0x0000FF00) >> 8;
-        state.memory[tempReg + 2] = (state.registers[Rd] & 0x00FF0000) >> 16;
-        state.memory[tempReg + 3] = (state.registers[Rd] & 0xFF000000) >> 24;
+      // L = 0; word stored into memory
+      // P = 1; offset is added/subtracted to base register before transferring data
+      if (tempReg == 0x20200000) {
+        printf("One GPIO pin from 0 to 9 has been accessed\n");
+        return;
+      } else if (tempReg == 0x20200004) {
+        printf("One GPIO pin from 10 to 19 has been accessed\n");
+        return;
+      } else if (tempReg == 0x20200008) {
+        printf("One GPIO pin from 20 to 29 has been accessed\n");
+        return;
+      } else if (tempReg == 0x20200028) {
+        printf("PIN OFF\n");
+        return;
+      } else if (tempReg == 0x2020001C) {
+        printf("PIN ON\n");
+        return;
+      }
+      state.memory[tempReg] = state.registers[Rd] & 0x000000FF;
+      state.memory[tempReg + 1] = (state.registers[Rd] & 0x0000FF00) >> 8;
+      state.memory[tempReg + 2] = (state.registers[Rd] & 0x00FF0000) >> 16;
+      state.memory[tempReg + 3] = (state.registers[Rd] & 0xFF000000) >> 24;
+
     } else {
-        // P = 0; offset is added/subtracted to base register after transferring data
-        state.memory[state.registers[Rn]] = state.registers[Rd] & 0x000000FF;
-        state.memory[state.registers[Rn] + 1] = (state.registers[Rd] & 0x0000FF00) >> 8;
-        state.memory[state.registers[Rn] + 2] = (state.registers[Rd] & 0x00FF0000) >> 16;
-        state.memory[state.registers[Rn] + 3] = (state.registers[Rd] & 0xFF000000) >> 24;
+      // P = 0; offset is added/subtracted to base register after transferring data
+      if (state.registers[Rn] == 0x20200000) {
+        printf("One GPIO pin from 0 to 9 has been accessed\n");
         state.registers[Rn] = tempReg;
+        return;
+      } else if (state.registers[Rn] == 0x20200004) {
+        printf("One GPIO pin from 10 to 19 has been accessed\n");
+        state.registers[Rn] = tempReg;
+        return;
+      } else if (state.registers[Rn] == 0x20200008) {
+        printf("One GPIO pin from 20 to 29 has been accessed\n");
+        state.registers[Rn] = tempReg;
+        return;
+      } else if (state.registers[Rn] == 0x20200028) {
+        printf("PIN OFF\n");
+        state.registers[Rn] = tempReg;
+        return;
+      } else if (state.registers[Rn] == 0x2020001C) {
+        printf("PIN ON\n");
+        state.registers[Rn] = tempReg;
+        return;
+      }
+      state.memory[state.registers[Rn]] = state.registers[Rd] & 0x000000FF;
+      state.memory[state.registers[Rn] + 1] = (state.registers[Rd] & 0x0000FF00) >> 8;
+      state.memory[state.registers[Rn] + 2] = (state.registers[Rd] & 0x00FF0000) >> 16;
+      state.memory[state.registers[Rn] + 3] = (state.registers[Rd] & 0xFF000000) >> 24;
+      state.registers[Rn] = tempReg;
     }
   }
 }
