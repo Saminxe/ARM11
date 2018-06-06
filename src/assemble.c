@@ -97,7 +97,10 @@ int getRegister(char *reg)
   else if (equals(reg, "lr")) return 14;
   else if (equals(reg, "pc")) return 15;
   else if (equals(reg, "cpsr")) return 16;
-  else return -1;
+  else {
+    printf("register does not exist\n");
+    return -1;
+  }
 }
 
 Type typeCheck(char *opcode) {
@@ -415,7 +418,7 @@ uint32_t circularShift(int lr, uint32_t input, int n)
 uint32_t getRotate(uint32_t input)
 {
   uint8_t rots = 0;
-  while (!(3 & input) && (rots <= 30)) {
+  while (!(0xFF & input) && (rots <= 30)) {
     input = circularShift(1, input, 2);
     rots += 2;
   }
@@ -438,7 +441,6 @@ uint32_t processOperand2(char *operand2)
   if (*operand2 == '#') {
     char *ptr;
     long int imm = strtol(operand2 + 1, &ptr, 0);
-    printf("%lu\n", imm);
     result |= (getRotate(imm) & 0xFFF);
     result |= (1 << 25);
   } else {
@@ -476,7 +478,7 @@ uint32_t processOperand2(char *operand2)
       result = Rm;
     }
   }
-  return (result & 0xFFF);
+  return result;
 }
 
 /*** FILL OUT YOUR OWN INSTRUCTIONS ください　どうもありがとうございました。***/
@@ -508,14 +510,35 @@ uint32_t compute(OpCode opcode, char *rd, char *rn, char *operand2, int set)
 
 uint32_t move(char *rd, char *operand2, int set)
 {
-  // TODO: return 28-bit instruction for mov
-  return 0;
+  uint32_t instruction = 0;
+  uint8_t Rd = getRegister(rd);
+  printf("%u\n", Rd);
+  uint32_t op2 = processOperand2(operand2);
+  instruction |= 0xD << 21;
+  instruction |= Rd << 12;
+  instruction |= op2;
+  if (set) instruction |= (1 << 20);
+  return instruction;
 }
 
 uint32_t flagger(OpCode opcode, char *rn, char *operand2)
 {
-  // TODO: return 28-bit instruction for tst, teq, cmp
-  return 0;
+  uint32_t instruction = 0;
+  uint32_t op2 = 0;
+  uint8_t opc;
+  uint8_t Rn = getRegister(rn);
+  switch (opcode) {
+    case TST: opc = 0x8; break;
+    case TEQ: opc = 0x9; break;
+    case CMP: opc = 0xA; break;
+    default: opc = 0xF; break;
+  }
+  op2 = processOperand2(operand2);
+  instruction |= (opc << 21);
+  instruction |= Rn << 16;
+  instruction |= op2;
+  instruction |= 1 << 20;
+  return instruction;
 }
 
 uint32_t shift(char *rn, char *expression, int set)
