@@ -192,18 +192,15 @@ Condition condCheck(char* opcode)
       return AL;
     } else {
       strcpy(temp, opcode + 1);
-      printf("%s\n", temp);
       return getCondition(temp);
     }
   } else if (type == ERRO) {
-    printf("%s\n", "ERRO");
     return ERR;
   } else {
     if (strlen(opcode) == 3) {
       return AL;
     } else {
       strcpy(temp, opcode + 3);
-      printf("%s\n", temp);
       return getCondition(temp);
     }
   }
@@ -448,17 +445,14 @@ uint32_t processOperand2(char *operand2)
     char shift[DEFAULT_STRLEN];
     //int shift_amount;
     sscanf(operand2, "%[^, ] %*[,] %[^\n]", rm, shift);
-    printf("%s, %s\n", rm, shift);
     uint8_t Rm = getRegister(rm);
     if (*shift > 32) { //if it is not trash
-      printf("%s\n", "not null");
       char _shift_type[3];
       Shift shift_type;
       char _shift_operand[DEFAULT_STRLEN];
       long int shift_operand;
       char *shiftptr;
       sscanf(shift, "%[^ ] %s", _shift_type, _shift_operand);
-      printf("%s, %s\n", _shift_type, _shift_operand);
       shift_type = getShift(_shift_type);
       switch (shift_type) {
         case ShSL: break;
@@ -512,7 +506,6 @@ uint32_t move(char *rd, char *operand2, int set)
 {
   uint32_t instruction = 0;
   uint8_t Rd = getRegister(rd);
-  printf("%u\n", Rd);
   uint32_t op2 = processOperand2(operand2);
   instruction |= 0xD << 21;
   instruction |= Rd << 12;
