@@ -51,5 +51,5 @@ uint32_t flagger(OpCode opcode, char *rn, char *operand2);
 uint32_t shift(char *rn, char *expression, int set);
 uint32_t mul(char *rd, char *rm, char *rs, int set);
 uint32_t mla(char *rd, char *rm, char *rs, char *rn, int set);
-uint32_t sdt(OpCode opcode, char *rd, char *rn, char *address, int locctr);
+uint32_t sdt(OpCode opcode, char *rd, char *address, int locctr);
 uint32_t branch(char *address, int locctr, SymbolTable symtab);
