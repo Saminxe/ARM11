@@ -292,7 +292,7 @@ int main(int argc, char **argv) {
         }
       } else {
         if (typeCheck(_opcode) != ERRO) {
-          locctr += 32;
+          locctr += INSTRUCTION_WIDTH;
         }
       }
     }
@@ -369,7 +369,7 @@ int main(int argc, char **argv) {
 
         fwrite(instr_array, sizeof(uint8_t), 4, dest);
 
-        locctr += 32;
+        locctr += INSTRUCTION_WIDTH;
       }
     }
   }
@@ -415,11 +415,13 @@ uint32_t circularShift(int lr, uint32_t input, int n)
 uint32_t getRotate(uint32_t input)
 {
   uint8_t rots = 0;
-  while (!(0xFF & input) && (rots <= 30)) {
-    input = circularShift(1, input, 2);
-    rots += 2;
+  while (rots <= 30) {
+    if (input & (~0xFF)) {
+      input = circularShift(1, input, 2);
+      rots += 2;
+    } else break;
   }
-  if (input & (~0xFF)) return -1;
+  if (rots > 30) return -1;
   return (input | (rots << 7)) & 0xFFF;
 }
 
@@ -621,13 +623,14 @@ uint32_t sdt(OpCode opcode, char *rd, char *rn, char *operand2, int locctr)
 /*** Branch Instructions ***/
 uint32_t branch(char *label, int locctr, SymbolTable symtab)
 {
-  int32_t offset = 0xA000000;
-  uint32_t address = getKeyVal(symtab, label);     // this is the converted address of the label
-  address -= locctr;
-  address += 8;
+  uint32_t instruction = 0;
+  printf("Current Locctr: %u\n", locctr);
+  int32_t address = getKeyVal(symtab, label);     // this is the converted address of the label
+  address = (address - (locctr + (2 * INSTRUCTION_WIDTH)));
   address = address >> 2;
-  offset |= address;
+  instruction |= address;
+  instruction |= (0xA << 24);
   // address will be fed in from the symbol table.
   // locctr is the location of the instruction in memory, hence = PC - 8.
-  return offset;
+  return instruction;
 }
