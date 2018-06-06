@@ -3,9 +3,11 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
+#include <limits.h>
 
 #define BUFFER_SIZE 512
 #define DEFAULT_MAP_SIZE 120
+#define INSTRUCTION_WIDTH 32
 #define PC 15
 #define CSPR 16
 #define DEFAULT_STRLEN 64
