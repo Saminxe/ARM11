@@ -520,7 +520,7 @@ uint32_t processExpression(char *expression)
       imm = abs(imm);
       result |= imm;
     } else {
-      result |= 1 << 23;
+      result |= 1 << 23; // u = 1;
       result |= imm;
     }
   } else {
@@ -712,7 +712,7 @@ uint64_t sdt(OpCode opcode, char *rd, char *address, int locctr, const int progr
       sscanf(address, "%*[[] %[^,] %*[, ] %[^]] ", rn, expression);
       p = 1;
     }
-    if (*expression == '+') {
+    if (*expression == '+' || *expression == 'r') {
       char _expr[DEFAULT_STRLEN];
       strcpy(_expr, expression + 1);
       strcpy(expression, _expr);
@@ -722,9 +722,8 @@ uint64_t sdt(OpCode opcode, char *rd, char *address, int locctr, const int progr
       strcpy(_expr, expression + 1);
       strcpy(expression, _expr);
       u = 0;
-    } else u = 1;
+    }
     if (*expression > 32) offset = processExpression(expression);
-    //if (~offset & (1 << 23)) u = 0;
     Rn = getRegister(rn);
   }
   if (opcode == LDR) l = 1;
