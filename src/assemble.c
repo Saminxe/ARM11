@@ -669,10 +669,11 @@ uint64_t sdt(OpCode opcode, char *rd, char *address, int locctr, const int progr
   int pc = locctr + (2 * INSTRUCTION_WIDTH);
   uint32_t instruction = 0;
   uint8_t Rd = getRegister(rd);
+  printf("%s = %d\n", rd, Rd);
   uint8_t Rn = 0;
   int i, p, u, l;
   i = p = u = l = 0;
-  int offset;
+  int offset = 0;
   uint64_t loadvalue = 0;
   if (*address == '=') {
     i = 1;
@@ -722,8 +723,11 @@ uint64_t sdt(OpCode opcode, char *rd, char *address, int locctr, const int progr
       strcpy(_expr, expression + 1);
       strcpy(expression, _expr);
       u = 0;
+    } else if (*expression == 'r' || *expression <= 32) {
+      u = 1;
     }
     if (*expression > 32) offset = processExpression(expression);
+    printf("%x\n", offset);
     Rn = getRegister(rn);
   }
   if (opcode == LDR) l = 1;
@@ -735,7 +739,7 @@ uint64_t sdt(OpCode opcode, char *rd, char *address, int locctr, const int progr
   instruction |= Rn << 16;
   instruction |= Rd << 12;
   instruction |= offset;
-  return loadvalue << 32 | instruction;
+  return (loadvalue << 32) | instruction;
 }
 
 
