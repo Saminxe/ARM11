@@ -32,6 +32,7 @@ int noOfArgs(OpCode op)
   else return -1;
 }
 
+//my anus is in fire
 void printInstruction(OpCode opcode, Condition cond, char **args, int set)
 {
   int expectedArgs = noOfArgs(opcode);

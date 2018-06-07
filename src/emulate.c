@@ -455,6 +455,7 @@ void branchDataTransfer(State state, uint32_t instr)
   }
   state.registers[PC] += offset;
 }
+/*** End of processing instructions ***/
 
 /*** Pipeline ***/
 int process(State state)
