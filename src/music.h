@@ -1,0 +1,4 @@
+#ifndef ARM11_07_MUSIC_H
+#define ARM11_07_MUSIC_H
+
+#endif //ARM11_07_MUSIC_H
