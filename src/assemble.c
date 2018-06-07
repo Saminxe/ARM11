@@ -750,9 +750,9 @@ uint32_t branch(char *label, int locctr, SymbolTable symtab)
   uint32_t instruction = 0;
   printf("Current Locctr: %u\n", locctr);
   int32_t address = getKeyVal(symtab, label);     // this is the converted address of the label
-  address = (address - (locctr + (2 * INSTRUCTION_WIDTH)));
+  address = (address - (locctr + (2 * INSTRUCTION_WIDTH))) / 8;
   address = address >> 2;
-  instruction |= address;
+  instruction |= (address & 0xFFFFFF);
   instruction |= (0xA << 24);
   // address will be fed in from the symbol table.
   // locctr is the location of the instruction in memory, hence = PC - 8.
