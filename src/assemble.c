@@ -253,7 +253,7 @@ int main(int argc, char **argv) {
   uint32_t locctr = 0; // Starting address for memory allocations
   SymbolTable symtab = {0, calloc(DEFAULT_MAP_SIZE, sizeof(Symbol))};
   int size = 0; // Current pointer for symtab
-  static Buffer post_buffer = {1};
+  static Buffer post_buffer = {0};
 
   // Tests for correct amount of input variables
   if (argc != 3) {
@@ -311,7 +311,7 @@ int main(int argc, char **argv) {
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
     instruction = 0; // Resets the instruction;
     char *_opcode = strtok(buffer, " ");
-    if (*_opcode != ';') {
+    if (*_opcode != ';' && *_opcode > 32) {
       if (contains(_opcode, ':')) {
         char opcode[DEFAULT_STRLEN];
         strcpy(opcode, isLabel(_opcode));
@@ -338,7 +338,7 @@ int main(int argc, char **argv) {
 
         printInstruction(opcode, cond, operands, set);
 
-        if ((0 <= opcode && opcode <= 5) || opcode == 15) {
+        if (0 <= opcode && opcode <= 5) {
           instruction = compute(opcode, operands[0], operands[1], operands[2], set);
         }
         else if (opcode == 6) {
@@ -354,10 +354,26 @@ int main(int argc, char **argv) {
           instruction = mla(operands[0], operands[1], operands[2], operands[3], set);
         }
         else if (12 <= opcode && opcode <= 13) {
-          instruction = sdt(opcode, operands[0], operands[1],  locctr, program_end, post_buffer);
+          uint64_t transfer = sdt(opcode, operands[0], operands[1],  locctr, program_end, post_buffer);
+          if (transfer & (0xFFFFFFFF00000000)) {
+            uint32_t buffervalue = (transfer & (0xFFFFFFFF00000000)) >> 32;
+            instruction = transfer & 0xFFFFFFFF;
+            post_buffer.buffer[post_buffer.size] = buffervalue;
+            post_buffer.size++;
+          } else {
+            instruction = transfer & 0xFFFFFFFF;
+          }
         }
         else if (opcode == 14) {
           instruction = branch(operands[0], locctr, symtab);
+        }
+        else if (opcode == 15) {
+          char _op2[80];
+          strcpy(_op2, operands[0]);
+          strcat(_op2, ", lsl ");
+          strcat(_op2, operands[1]);
+          printf("%s\n", _op2);
+          instruction = move(operands[0], _op2, set);
         }
         else return EXIT_FAILURE;
 
@@ -374,6 +390,20 @@ int main(int argc, char **argv) {
         locctr += INSTRUCTION_WIDTH;
       }
     }
+  }
+
+  printf("%u\n", post_buffer.size);
+
+  for (int i = 0; i < post_buffer.size; i++)
+  {
+    uint32_t instruction = post_buffer.buffer[i];
+    printf("%x\n", instruction);
+    uint8_t instr_array[4];
+    instr_array[0] = 0xFF & instruction;
+    instr_array[1] = (0xFF00 & instruction) >> 8;
+    instr_array[2] = (0xFF0000 & instruction) >> 16;
+    instr_array[3] = (0xFF000000 & instruction) >> 24;
+    fwrite(instr_array, sizeof(uint8_t), 4, dest);
   }
 
   fclose(src);
@@ -442,12 +472,12 @@ uint32_t processOperand2(char *operand2)
   if (*operand2 == '#') {
     char *ptr;
     long int imm = strtol(operand2 + 1, &ptr, 0);
+    printf("%ld\n", imm);
     result |= (getRotate(imm) & 0xFFF);
     result |= (1 << 25);
   } else {
     char rm[3];
     char shift[DEFAULT_STRLEN];
-    //int shift_amount;
     sscanf(operand2, "%[^, ] %*[,] %[^\n]", rm, shift);
     uint8_t Rm = getRegister(rm);
     if (*shift > 32) { //if it is not trash
@@ -472,9 +502,55 @@ uint32_t processOperand2(char *operand2)
         shift_operand = getRegister(_shift_operand);
         result |= (shift_operand << 8) | 1;
       }
-    } else {
-      result = Rm;
     }
+    result |= Rm;
+  }
+  return result;
+}
+
+uint32_t processExpression(char *expression)
+{
+  uint32_t result = 0;
+  if (*expression == '#') {
+    char *ptr;
+    long int imm = strtol(expression + 1, &ptr, 0);
+    printf("%ld\n", imm);
+    if (imm < 0) {
+      imm = abs(imm);
+      result |= imm;
+    } else {
+      result |= 1 << 23;
+      result |= imm;
+    }
+  } else {
+    char rm[3];
+    char shift[DEFAULT_STRLEN];
+    sscanf(expression, "%[^, ] %*[,] %[^\n]", rm, shift);
+    uint8_t Rm = getRegister(rm);
+    if (*shift > 32) { //if it is not trash
+      char _shift_type[3];
+      Shift shift_type;
+      char _shift_operand[DEFAULT_STRLEN];
+      long int shift_operand;
+      char *shiftptr;
+      sscanf(shift, "%[^ ] %s", _shift_type, _shift_operand);
+      shift_type = getShift(_shift_type);
+      switch (shift_type) {
+        case ShSL: break;
+        case ShLSR: result |= 1 << 5; break;
+        case ShASR: result |= 1 << 6; break;
+        case ShROR: result |= 3 << 5; break;
+        default: result |= 0xFFFFFFFF; break;
+      }
+      if (*_shift_operand == '#') {
+        shift_operand = strtol(_shift_operand + 1, &shiftptr, 0);
+        result |= (shift_operand & 0x1F) << 7;
+      } else {
+        shift_operand = getRegister(_shift_operand);
+        result |= (shift_operand << 8) | 1;
+      }
+    }
+    result |= Rm;
   }
   return result;
 }
@@ -511,6 +587,7 @@ uint32_t move(char *rd, char *operand2, int set)
   uint32_t instruction = 0;
   uint8_t Rd = getRegister(rd);
   uint32_t op2 = processOperand2(operand2);
+  printf("%x\n", op2);
   instruction |= 0xD << 21;
   instruction |= Rd << 12;
   instruction |= op2;
@@ -586,54 +663,71 @@ uint32_t mla(char *rd, char *rm, char *rs, char *rn, int set)
 
 /*** Single Data Transfer Instructions ***/
 
-uint32_t sdt(OpCode opcode, char *rd, char *address, int locctr, const int program_end, Buffer post_buffer)
+uint64_t sdt(OpCode opcode, char *rd, char *address, int locctr, const int program_end, Buffer post_buffer)
 {
   int pc = locctr + (2 * INSTRUCTION_WIDTH);
   uint32_t instruction = 0;
   uint8_t Rd = getRegister(rd);
   uint8_t Rn = 0;
   int i, p, u, l;
+  i = p = u = l = 0;
   int offset;
+  uint64_t loadvalue = 0;
   if (*address == '=') {
+    i = 1;
     if (opcode == LDR) {
       char *ptr;
       uint32_t expression = strtol(address + 1, &ptr, 0);
-      l = 1;
+      l = 0;
       if (expression <= 0xFF) {
-        char *operand2 = strcat("#", address + 1);
+        char operand2[80];
+        strcpy(operand2, "#");
+        strcat(operand2, address + 1);
         return move(rd, operand2, 0);
       } else {
-        post_buffer.buffer[post_buffer.size] = expression;
-        i = p = u = 1;
+        loadvalue = expression;
+        i = 0;
+        p = u = 1;
         Rn = PC;
-        offset = (INSTRUCTION_WIDTH * (post_buffer.size + program_end)) - pc;
-        post_buffer.size++;
+        offset = ((INSTRUCTION_WIDTH * post_buffer.size) + program_end - pc) / 8;
       }
-    } else return -1;
+    } else {
+      printf("Error, using immediate with STR\n");
+      return -1;
+    }
   } else {
+    i = 0;
     char rn[3];
     char expression[DEFAULT_STRLEN];
     if (address[3] == ']' || address[4] == ']') {
-      sscanf(address, "%*[[] %[^]] %*[], ] %[^\n] ", rn, expression);
-      if (*expression == '+') {
-        char _expr[DEFAULT_STRLEN];
-        strcpy(_expr, expression + 1);
-        strcpy(expression, _expr);
-        u = 1;
-      } else if (*expression == '-') {
-        char _expr[DEFAULT_STRLEN];
-        strcpy(_expr, expression + 1);
-        strcpy(expression, _expr);
-        u = 0;
+      sscanf(address, "%*[[] %[^]] %*[], ] %s ", rn, expression);
+      printf("%s\n", expression);
+      if (*expression > 32) {
+        p = 0;
+      } else {
+        p = 1;
       }
-      p = 0;
     } else {
       sscanf(address, "%*[[] %[^,] %*[, ] %[^]] ", rn, expression);
       p = 1;
     }
-    offset = processOperand2(expression);
+    if (*expression == '+') {
+      char _expr[DEFAULT_STRLEN];
+      strcpy(_expr, expression + 1);
+      strcpy(expression, _expr);
+      u = 1;
+    } else if (*expression == '-') {
+      char _expr[DEFAULT_STRLEN];
+      strcpy(_expr, expression + 1);
+      strcpy(expression, _expr);
+      u = 0;
+    } else u = 1;
+    if (*expression > 32) offset = processExpression(expression);
+    //if (~offset & (1 << 23)) u = 0;
     Rn = getRegister(rn);
   }
+  if (opcode == LDR) l = 1;
+  instruction |= 1 << 26;
   instruction |= i << 25;
   instruction |= p << 24;
   instruction |= u << 23;
@@ -641,7 +735,7 @@ uint32_t sdt(OpCode opcode, char *rd, char *address, int locctr, const int progr
   instruction |= Rn << 16;
   instruction |= Rd << 12;
   instruction |= offset;
-  return instruction;
+  return loadvalue << 32 | instruction;
 }
 
 
