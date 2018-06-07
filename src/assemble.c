@@ -652,18 +652,17 @@ uint32_t sdt(OpCode opcode, char *rd, char *address, int locctr)
   } else {
     char rn[3];
     char expression[DEFAULT_STRLEN];
-    uint32_t op2;
     if (address[3] == ']' || address[4] == ']') {
-      sscanf(string, "%*[[] %[^]] %*[], ] %[^\n] ", rn, expression);
+      sscanf(address, "%*[[] %[^]] %*[], ] %[^\n] ", rn, expression);
       if (*expression == '+') {
         char _expr[DEFAULT_STRLEN];
         strcpy(_expr, expression + 1);
-        expression = _expr;
+        strcpy(expression, _expr);
         u = 1;
       } else if (*expression == '-') {
         char _expr[DEFAULT_STRLEN];
         strcpy(_expr, expression + 1);
-        expression = _expr;
+        strcpy(expression, _expr);
         u = 0;
       }
       p = 0;
@@ -671,7 +670,7 @@ uint32_t sdt(OpCode opcode, char *rd, char *address, int locctr)
       sscanf(address, "%*[[] %[^,] %*[, ] %[^]] ", rn, expression);
       p = 1;
     }
-    op2 = processOperand2(expression);
+    offset = processOperand2(expression);
     Rn = getRegister(rn);
   }
   instruction |= i << 25;
