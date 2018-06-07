@@ -253,6 +253,7 @@ int main(int argc, char **argv) {
   uint32_t locctr = 0; // Starting address for memory allocations
   SymbolTable symtab = {0, calloc(DEFAULT_MAP_SIZE, sizeof(Symbol))};
   int size = 0; // Current pointer for symtab
+  static Buffer post_buffer = {1};
 
   // Tests for correct amount of input variables
   if (argc != 3) {
@@ -298,6 +299,7 @@ int main(int argc, char **argv) {
     }
   }
 
+  const int program_end = locctr;
   fseek(src, 0, SEEK_SET); // Reset file the pointer
   locctr = 0; // Resets the location counter
 
@@ -352,7 +354,7 @@ int main(int argc, char **argv) {
           instruction = mla(operands[0], operands[1], operands[2], operands[3], set);
         }
         else if (12 <= opcode && opcode <= 13) {
-          instruction = sdt(opcode, operands[0], operands[1], operands[2],  locctr);
+          instruction = sdt(opcode, operands[0], operands[1],  locctr, program_end, post_buffer);
         }
         else if (opcode == 14) {
           instruction = branch(operands[0], locctr, symtab);
@@ -584,38 +586,62 @@ uint32_t mla(char *rd, char *rm, char *rs, char *rn, int set)
 
 /*** Single Data Transfer Instructions ***/
 
-uint32_t sdt(OpCode opcode, char *rd, char *rn, char *operand2, int locctr)
+uint32_t sdt(OpCode opcode, char *rd, char *address, int locctr, const int program_end, Buffer post_buffer)
 {
-  /*
+  int pc = locctr + (2 * INSTRUCTION_WIDTH);
+  uint32_t instruction = 0;
   uint8_t Rd = getRegister(rd);
-  uint8_t Rn = getRegister(rn);
-  uint32_t instruction = 0x4000000;
-  char *RnToken;
-  char *exprToken;
-
-  int temp = sscanf(operand2, "%[,], %s", RnToken, exprToken);
-  if (opcode == 12) {        //12 = LDR, 13 = STR
-    instruction |= (1<<20);
-    if (operand2[0] == '=') {
-      if (operand2 < 0xFF) {                    //value of operand2, TODO
-        instruction |= move(rd, operand2, 1);
+  uint8_t Rn = 0;
+  int i, p, u, l;
+  int offset;
+  if (*address == '=') {
+    if (opcode == LDR) {
+      char *ptr;
+      uint32_t expression = strtol(address + 1, &ptr, 0);
+      l = 1;
+      if (expression <= 0xFF) {
+        char *operand2 = strcat("#", address + 1);
+        return move(rd, operand2, 0);
+      } else {
+        post_buffer.buffer[post_buffer.size] = expression;
+        i = p = u = 1;
+        Rn = PC;
+        offset = (INSTRUCTION_WIDTH * (post_buffer.size + program_end)) - pc;
+        post_buffer.size++;
       }
-      instruction |= operand2;
-      instruction |= (Rd << 12);
-      instruction |= (Rn << 16);
-    } else if (strlen(RnToken) == 5) {          //[Rn],    P=0
-      Rn = Rn << operand2;                      //value of operand2, TODO
-    } else {                                    //[Rn,     P=1
-      Rn = Rn << operand2;                      //value of operand2, TODO
-      instruction |= 0x1000000;                 //setting P flag
+    } else return -1;
+  } else {
+    char rn[3];
+    char expression[DEFAULT_STRLEN];
+    if (address[3] == ']' || address[4] == ']') {
+      sscanf(address, "%*[[] %[^]] %*[], ] %[^\n] ", rn, expression);
+      if (*expression == '+') {
+        char _expr[DEFAULT_STRLEN];
+        strcpy(_expr, expression + 1);
+        strcpy(expression, _expr);
+        u = 1;
+      } else if (*expression == '-') {
+        char _expr[DEFAULT_STRLEN];
+        strcpy(_expr, expression + 1);
+        strcpy(expression, _expr);
+        u = 0;
+      }
+      p = 0;
+    } else {
+      sscanf(address, "%*[[] %[^,] %*[, ] %[^]] ", rn, expression);
+      p = 1;
     }
-    instruction |= 0x100000;                    //setting L flag
+    offset = processOperand2(expression);
+    Rn = getRegister(rn);
   }
+  instruction |= i << 25;
+  instruction |= p << 24;
+  instruction |= u << 23;
+  instruction |= l << 20;
+  instruction |= Rn << 16;
+  instruction |= Rd << 12;
+  instruction |= offset;
   return instruction;
-  // TODO: return 28-bit instruction for ldr, str
-  // locctr is the location of the instruction in memory, hence = PC - 8.
-  // opcode is str or ldr
-  */return -1;
 }
 
 

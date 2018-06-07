@@ -29,12 +29,10 @@ typedef struct {
   Symbol *symbols;
 } SymbolTable;
 
-
 typedef struct {
-    uint8_t *memory;
-    uint32_t *registers;
-} State;
-
+  int size;
+  uint32_t buffer[BUFFER_SIZE];
+} Buffer;
 
 int contains(char *string, char c);
 int symtabContains(SymbolTable m, char *k);
@@ -51,5 +49,5 @@ uint32_t flagger(OpCode opcode, char *rn, char *operand2);
 uint32_t shift(char *rn, char *expression, int set);
 uint32_t mul(char *rd, char *rm, char *rs, int set);
 uint32_t mla(char *rd, char *rm, char *rs, char *rn, int set);
-uint32_t sdt(OpCode opcode, char *rd, char *rn, char *address, int locctr);
+uint32_t sdt(OpCode opcode, char *rd, char *address, int locctr, const int program_end, Buffer post_buffer);
 uint32_t branch(char *address, int locctr, SymbolTable symtab);
