@@ -146,9 +146,12 @@ int hasCondition(char *opcode)
 
 Condition getCondition(char *opcode)
 {
+  printf("cond1\n");
   if (hasCondition(opcode)) {
     char cond[2];
+    printf("cond2\n");
     strcpy(cond, opcode + strlen(opcode) - 2); // last two chars of opcode
+    printf("cond3\n");
     cond[2] = 0;
     if (equals(cond, "eq")) return EQ;
     else if (equals(cond, "ne")) return NE;
@@ -159,6 +162,7 @@ Condition getCondition(char *opcode)
     else if (equals(cond, "al")) return AL;
     else return ER;
   } else {
+    printf("cond4\n");
     return AL;
   }
 }
@@ -309,8 +313,13 @@ int main(int argc, char **argv) {
     }
   }
 
+  printf("%s\n", "strtok test");
+  char string[19];
+  strcpy(string, strtok("asd asf", " "));
+  printf("%s\n", string);
+
   fseek(src, 0, SEEK_SET); // Reset file the pointer
-  program_end = locctr; // Tell me the size of the file
+  PROGRAM_END = locctr; // Tell me the size of the file
   locctr = 0; // Resets the location counter
 
   printf("SYMBOL TABLE:\n");
@@ -319,7 +328,9 @@ int main(int argc, char **argv) {
 
   // Translation Loop
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
+    printf("here\n");
     instruction = 0; // Resets the instruction;
+    printf("here2\n");
     char *_opcode = strtok(buffer, " ");
     if (*_opcode != ';') {
       if (contains(_opcode, ':')) {
@@ -328,16 +339,23 @@ int main(int argc, char **argv) {
         uint32_t labelAddress = getKeyVal(symtab, opcode);
         printf("%s has address 0x%x\n", opcode, labelAddress);
       } else {
+        printf("here2.01\n");
         OpCode opcode = getOpcode(_opcode);
+        printf("here2.1\n");
         Condition cond = getCondition(_opcode);
+        printf("here3\n");
         int set = isSet(_opcode);
+        printf("here4\n");
         char *_operands = strtok(NULL, "\n");
+        printf("here5\n");
         char *operands[4];
+        printf("here6\n");
         operands[0] = strtok(_operands, ", ");
+        printf("here7\n");
         for (int i = 1; i < noOfArgs(opcode) - 1; i++) {
           operands[i] = strtok(NULL, ", ");
         }
-
+        printf("here8\n");
         if (noOfArgs(opcode) >= 2) {
           char *final = strtok(NULL, "\n;");
           int shift = 0;
@@ -345,7 +363,7 @@ int main(int argc, char **argv) {
           operands[noOfArgs(opcode) - 1] =  final + shift;
           // magic 1 saves the day again
         }
-
+        printf("here9\n");
         printInstruction(opcode, cond, operands, set);
 
         if ((0 <= opcode && opcode <= 5) || opcode == 15) {
@@ -608,7 +626,7 @@ uint32_t mla(char *rd, char *rm, char *rs, char *rn, int set)
 /*** Single Data Transfer Instructions ***/
 
 uint32_t sdt(OpCode opcode, char *rd, char *address, int locctr)
-{
+{ /*
   int pc = locctr + (2 * INSTRUCTION_WIDTH);
   uint32_t instruction = 0;
   uint8_t Rd = getRegister(rd);
@@ -663,6 +681,7 @@ uint32_t sdt(OpCode opcode, char *rd, char *address, int locctr)
   instruction |= Rn << 16;
   instruction |= Rd << 12;
   instruction |= offset;
+  */ return -1;
 }
 
 
