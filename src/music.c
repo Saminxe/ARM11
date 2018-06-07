@@ -2,7 +2,7 @@
 
 //This is for C Major
 
-typedef struct probability {
+struct probability {
   double left1;
   double left2;
   double left3;
@@ -12,12 +12,11 @@ typedef struct probability {
   double right3;
   double right4;
   double same;
-}prob;
+} prob;
 
 enum notes{A1, B1, C1, D1, E1, F1, G1, A2, B2, C2, D2, E2, F2, G2, A3};
 
 void setProbability(enum notes note) {
-  struct probability prob;
   prob.same = 0.2;
 
   if (note > 3 && note < 11 && note !=6 && note != 9) {  //notes outside this range could go out of bounds or is G1/C2
