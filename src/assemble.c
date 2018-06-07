@@ -1,12 +1,5 @@
 #include "assemble.h"
 
-int PROGRAM_END;
-  // GLOBAL VARIABLE: Denotes the size of the procedure to be written.
-uint32_t *POST_BUFFER;
-  // GLOBAL BUFFER: Stuff to be written after the procedure.
-int POST_BUFFER_SIZE = 0;
-  // GLOBAL BUFFER: Size of the buffer.
-
 /*** Debugging tools ***/
 void printSymtab(SymbolTable s)
 {
@@ -260,7 +253,6 @@ int main(int argc, char **argv) {
   uint32_t locctr = 0; // Starting address for memory allocations
   SymbolTable symtab = {0, calloc(DEFAULT_MAP_SIZE, sizeof(Symbol))};
   int size = 0; // Current pointer for symtab
-  POST_BUFFER = calloc(BUFFER_SIZE, sizeof(uint32_t));
 
   // Tests for correct amount of input variables
   if (argc != 3) {
@@ -277,9 +269,6 @@ int main(int argc, char **argv) {
     fprintf(stderr, "File Load Failure\n");
     return EXIT_FAILURE;
   }
-
-  POST_BUFFER[0] = 0;
-  POST_BUFFER_SIZE++;
 
   // Symbol Tabulation Loop
   while (fgets(buffer, BUFFER_SIZE, src) != NULL) {
@@ -310,7 +299,6 @@ int main(int argc, char **argv) {
   }
 
   fseek(src, 0, SEEK_SET); // Reset file the pointer
-  program_end = locctr; // Tell me the size of the file
   locctr = 0; // Resets the location counter
 
   printf("SYMBOL TABLE:\n");
@@ -364,7 +352,7 @@ int main(int argc, char **argv) {
           instruction = mla(operands[0], operands[1], operands[2], operands[3], set);
         }
         else if (12 <= opcode && opcode <= 13) {
-          instruction = sdt(opcode, operands[0], operands[1], locctr);
+          instruction = sdt(opcode, operands[0], operands[1], operands[2],  locctr);
         }
         else if (opcode == 14) {
           instruction = branch(operands[0], locctr, symtab);
@@ -386,20 +374,9 @@ int main(int argc, char **argv) {
     }
   }
 
-  int temp_ptr = 0;
-  while (temp_ptr < POST_BUFFER_SIZE) {
-    uint8_t decomposed[4];
-    decomposed[0] = 0xFF & POST_BUFFER[temp_ptr];
-    decomposed[1] = (0xFF00 & POST_BUFFER[temp_ptr]) >> 8;
-    decomposed[2] = (0xFF0000 & POST_BUFFER[temp_ptr]) >> 16;
-    decomposed[3] = (0xFF000000 & POST_BUFFER[temp_ptr]) >> 24;
-    fwrite(decomposed, sizeof(uint8_t), 4, dest);
-  }
-
   fclose(src);
   fclose(dest);
   free(buffer);
-  free(POST_BUFFER);
 }
 
 
@@ -607,62 +584,38 @@ uint32_t mla(char *rd, char *rm, char *rs, char *rn, int set)
 
 /*** Single Data Transfer Instructions ***/
 
-uint32_t sdt(OpCode opcode, char *rd, char *address, int locctr)
+uint32_t sdt(OpCode opcode, char *rd, char *rn, char *operand2, int locctr)
 {
-  int pc = locctr + (2 * INSTRUCTION_WIDTH);
-  uint32_t instruction = 0;
+  /*
   uint8_t Rd = getRegister(rd);
-  uint8_t Rn = 0;
-  int i, p, u, l;
-  int offset;
-  if (*address == '=') {
-    if (opcode == LDR) {
-      char *ptr;
-      uint32_t expression = strtol(address + 1, &ptr, 0);
-      l = 1;
-      if (expression <= 0xFF) {
-        char *operand2 = strcat("#", address + 1);
-        return move(rd, operand2, 0);
-      } else {
-        POST_BUFFER[POST_BUFFER_SIZE] = expression;
-        i = p = u = 1;
-        Rn = PC;
-        offset = (INSTRUCTION_WIDTH * (POST_BUFFER_SIZE + PROGRAM_END)) - pc;
-        POST_BUFFER_SIZE++;
+  uint8_t Rn = getRegister(rn);
+  uint32_t instruction = 0x4000000;
+  char *RnToken;
+  char *exprToken;
+
+  int temp = sscanf(operand2, "%[,], %s", RnToken, exprToken);
+  if (opcode == 12) {        //12 = LDR, 13 = STR
+    instruction |= (1<<20);
+    if (operand2[0] == '=') {
+      if (operand2 < 0xFF) {                    //value of operand2, TODO
+        instruction |= move(rd, operand2, 1);
       }
-    } else return -1;
-  } else {
-    char rn[3];
-    char expression[DEFAULT_STRLEN];
-    uint32_t op2;
-    if (address[3] == ']' || address[4] == ']') {
-      sscanf(string, "%*[[] %[^]] %*[], ] %[^\n] ", rn, expression);
-      if (*expression == '+') {
-        char _expr[DEFAULT_STRLEN];
-        strcpy(_expr, expression + 1);
-        expression = _expr;
-        u = 1;
-      } else if (*expression == '-') {
-        char _expr[DEFAULT_STRLEN];
-        strcpy(_expr, expression + 1);
-        expression = _expr;
-        u = 0;
-      }
-      p = 0;
-    } else {
-      sscanf(address, "%*[[] %[^,] %*[, ] %[^]] ", rn, expression);
-      p = 1;
+      instruction |= operand2;
+      instruction |= (Rd << 12);
+      instruction |= (Rn << 16);
+    } else if (strlen(RnToken) == 5) {          //[Rn],    P=0
+      Rn = Rn << operand2;                      //value of operand2, TODO
+    } else {                                    //[Rn,     P=1
+      Rn = Rn << operand2;                      //value of operand2, TODO
+      instruction |= 0x1000000;                 //setting P flag
     }
-    op2 = processOperand2(expression);
-    Rn = getRegister(rn);
+    instruction |= 0x100000;                    //setting L flag
   }
-  instruction |= i << 25;
-  instruction |= p << 24;
-  instruction |= u << 23;
-  instruction |= l << 20;
-  instruction |= Rn << 16;
-  instruction |= Rd << 12;
-  instruction |= offset;
+  return instruction;
+  // TODO: return 28-bit instruction for ldr, str
+  // locctr is the location of the instruction in memory, hence = PC - 8.
+  // opcode is str or ldr
+  */return -1;
 }
 
 
