@@ -552,7 +552,6 @@ uint32_t processExpression(char *expression)
         result |= (shift_operand & 0x1F) << 7;
       } else {
         shift_operand = getRegister(_shift_operand);
-        printf("%s = %d\n", _shift_operand, shift_operand);
         result |= (shift_operand << 8) | 1;
       }
     }
