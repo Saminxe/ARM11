@@ -481,6 +481,7 @@ uint32_t processOperand2(char *operand2)
     char shift[DEFAULT_STRLEN];
     sscanf(operand2, "%[^, ] %*[,] %[^\n]", rm, shift);
     uint8_t Rm = getRegister(rm);
+    printf("%s = %d\n", rm, Rm);
     if (*shift > 32) { //if it is not trash
       char _shift_type[3];
       Shift shift_type;
@@ -501,16 +502,18 @@ uint32_t processOperand2(char *operand2)
         result |= (shift_operand & 0x1F) << 7;
       } else {
         shift_operand = getRegister(_shift_operand);
-        result |= (shift_operand << 8) | 1;
+        result |= (shift_operand << 8) | (1 << 4);
       }
     }
     result |= Rm;
   }
+  printf("%x\n", result);
   return result;
 }
 
 uint32_t processExpression(char *expression)
 {
+  printf("Expression: %s\n", expression);
   uint32_t result = 0;
   if (*expression == '#') {
     char *ptr;
@@ -528,6 +531,7 @@ uint32_t processExpression(char *expression)
     char shift[DEFAULT_STRLEN];
     sscanf(expression, "%[^, ] %*[,] %[^\n]", rm, shift);
     uint8_t Rm = getRegister(rm);
+    printf("%s = %d\n", rm, Rm);
     if (*shift > 32) { //if it is not trash
       char _shift_type[3];
       Shift shift_type;
@@ -548,10 +552,12 @@ uint32_t processExpression(char *expression)
         result |= (shift_operand & 0x1F) << 7;
       } else {
         shift_operand = getRegister(_shift_operand);
+        printf("%s = %d\n", _shift_operand, shift_operand);
         result |= (shift_operand << 8) | 1;
       }
     }
     result |= Rm;
+    result |= 1 << 25; // i = 1;
   }
   return result;
 }
@@ -698,7 +704,6 @@ uint64_t sdt(OpCode opcode, char *rd, char *address, int locctr, const int progr
       return -1;
     }
   } else {
-    i = 0;
     char rn[3];
     char expression[DEFAULT_STRLEN];
     if (address[3] == ']' || address[4] == ']') {
@@ -713,7 +718,7 @@ uint64_t sdt(OpCode opcode, char *rd, char *address, int locctr, const int progr
       sscanf(address, "%*[[] %[^,] %*[, ] %[^]] ", rn, expression);
       p = 1;
     }
-    if (*expression == '+' || *expression == 'r') {
+    if (*expression == '+') {
       char _expr[DEFAULT_STRLEN];
       strcpy(_expr, expression + 1);
       strcpy(expression, _expr);
