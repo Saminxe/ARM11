@@ -17,3 +17,19 @@ typedef struct { // Dynamics Envelople (only supports non-curved envelopes rip)
   int sus; // Sus in %
   int rel; // Release in ms
 } ADSR;
+
+typedef struct {
+  ADSR envelope;
+  int detune; // detune in +/- cents (100 cents = tone)
+  int octave;
+  Shape waveshape;
+} Osc;
+
+typedef struct {
+  double osc1_mix; // volume mix
+  Osc osc1;
+  double osc2_mix; // volume mix
+  Osc osc2;
+  double osc3_mix; // volume mix
+  Osc osc3;
+} InstrParams;
