@@ -4,17 +4,17 @@
 /***
 Envelope: Denotes the volume envelople
 Waveshape: Denotes the type of wave to produce
-Note: The note to play (C0 = 0, B9 = 131)
+Frequency: The frequency of the note in Hz
 Duration: The length of the note in ms
 This is a 16-bit depth oscillator.
 ***/
 
-int16_t *play(ADSR envelope, Shape wave, int note, int duration)
+int16_t *play(ADSR envelope, Shape wave, double freq, int duration)
 {
   // Initializes the waveform to be returned.
-  int wave_length = (duration * SAMPLE_RATE) / 1000;
+  uint32_t wave_length = (duration * SAMPLE_RATE) / 1000;
   int16_t *waveform = calloc(wave_length, sizeof(int16_t));
-  int wave_ptr = 0;
+  uint32_t wave_ptr = 0;
 
   // Calculates the length of envelope sections in frames
   int atk_len = (envelope.atk * SAMPLE_RATE) / 1000;
@@ -58,9 +58,6 @@ int16_t *play(ADSR envelope, Shape wave, int note, int duration)
 
   wave_ptr = 0; // Resets the pointer
 
-  // Calculates the frequency of the note to be played.
-  double freq = (A) * pow(FREQUENCY_RATIO, (double) (note - 69));
-  printf("note = %fHz\n", freq);
   // Calculates the number of frames a single wave takes up.
   int period = (int) ((1.0 / freq) * SAMPLE_RATE);
   printf("period = %fms, %d frames\n", 1000.0 / freq, period);
@@ -75,6 +72,7 @@ int16_t *play(ADSR envelope, Shape wave, int note, int duration)
       } else {
         *(waveform + wave_ptr) = - envelope;
       }
+      printf("Frame %u: %d\n", wave_ptr, *(waveform + wave_ptr));
       wave_ptr++;
     }
   } else if (wave == SAW) {
@@ -85,12 +83,42 @@ int16_t *play(ADSR envelope, Shape wave, int note, int duration)
       if (value >= INT16_MAX) {
         value = value - (2 * INT16_MAX);
       }
-      printf("%d\n", value);
+      printf("Frame %u: %d\n", wave_ptr, value);
+      *(waveform + wave_ptr) = (int16_t) (envelope_ratio * value);
+      wave_ptr++;
+    }
+  } else if (wave == TRIANGLE) {
+    while (wave_ptr < wave_length) {
+      double envelope_ratio = (double) *(waveform + wave_ptr) / INT16_MAX;
+      int timer = wave_ptr % period;
+      int value = ((double) (timer * 4) / period) * INT16_MAX;
+      if (value >= INT16_MAX && value < 3 * INT16_MAX) {
+        value = 2 * INT16_MAX - value;
+      } else if (value >= 3 * INT16_MAX) {
+        value = value - 4 * INT16_MAX;
+      }
+      printf("Frame %u: %d\n", wave_ptr, value);
+      *(waveform + wave_ptr) = (int16_t) (envelope_ratio * value);
+      wave_ptr++;
+    }
+  } else if (wave == NOISE) { // v bad implementation of noise, do not use
+    srand(time(NULL));
+    while (wave_ptr < wave_length) {
+      double envelope_ratio = (double) *(waveform + wave_ptr) / INT16_MAX;
+      int value = (rand() % UINT16_MAX) - INT16_MAX;
+      printf("Frame %u: %d\n", wave_ptr, value);
+      *(waveform + wave_ptr) = (int16_t) (envelope_ratio * value);
+      wave_ptr++;
+    }
+  } else if (wave == SINE) {
+    while (wave_ptr < wave_length) {
+      double envelope_ratio = (double) *(waveform + wave_ptr) / INT16_MAX;
+      int value = (int) (sin(((2 * M_PI) / period) * wave_ptr) * INT16_MAX);
+      printf("Frame %u: %d\n", wave_ptr, value);
       *(waveform + wave_ptr) = (int16_t) (envelope_ratio * value);
       wave_ptr++;
     }
   }
-
 
   return waveform;
 }
@@ -98,7 +126,7 @@ int16_t *play(ADSR envelope, Shape wave, int note, int duration)
 int main(int argc, char const *argv[]) {
   ADSR envelope = {10, 10, 50, 10};
   FILE *wavey = fopen("waveform", "wb");
-  int16_t *waveform = play(envelope, SAW, 69, 50);
+  int16_t *waveform = play(envelope, SQUARE, 442.0, 50);
   int wavlen = (50 * SAMPLE_RATE) / 1000;
   fwrite(waveform, sizeof(int16_t), wavlen, wavey);
   fclose(wavey);
