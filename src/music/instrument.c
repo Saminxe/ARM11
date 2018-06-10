@@ -229,6 +229,7 @@ int16_t *instrument(InstrParams parameters, int note, int duration)
   return waveform;
 }
 
+/* Testing
 int main(int argc, char const *argv[]) {
   ADSR envelope = {10, 10, 50, 10};
   Osc osc1 = {envelope, 0, 0, SQUARE};
@@ -242,4 +243,4 @@ int main(int argc, char const *argv[]) {
   free(waveform);
   fclose(wavey);
   return 0;
-}
+}*/

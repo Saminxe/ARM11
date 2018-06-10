@@ -5,13 +5,13 @@ CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
 
 .PHONY: all clean
 
-all: assemble emulate
+all: music instrument
 
-assemble: assemble.o
+music: music.o
 
-emulate: emulate.o
+instrument: instrument.o
 
 clean:
 	rm -f $(wildcard *.o)
-	rm -f assemble
-	rm -f emulate
+	rm -f music
+	rm -f instrument

@@ -1,8 +1,19 @@
+#ifndef <stdio.h>
 #include <stdio.h>
+#endif
+#ifndef <stdlib.h>
 #include <stdlib.h>
+#endif
+#ifndef <stdint.h>
 #include <stdint.h>
+#endif
+#ifndef <math.h>
 #include <math.h>
+#endif
+#ifndef <time.h>
 #include <time.h>
+#endif
+
 #define A 440 // A pitch standard
 #define FREQUENCY_RATIO 1.05946309436 // twelfth root of 2 for equal temperament
 #define SAMPLE_RATE 44100 // sample rate in Hz
@@ -33,3 +44,5 @@ typedef struct {
   double osc3_mix; // volume mix
   Osc osc3;
 } InstrParams;
+
+int16_t *instrument(InstrParams parameters, int note, int duration);
