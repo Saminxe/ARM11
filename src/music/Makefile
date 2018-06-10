@@ -9,9 +9,6 @@ all: music instrument
 
 music: music.o
 
-instrument: instrument.o
-
 clean:
 	rm -f $(wildcard *.o)
 	rm -f music
-	rm -f instrument
