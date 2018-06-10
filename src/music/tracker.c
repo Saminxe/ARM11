@@ -344,6 +344,26 @@ int16_t *instrument(InstrParams parameters, int note, int duration, uint8_t velo
   return waveform;
 }
 
+void printPitch(int pitch)
+{
+  // Prints out the note represented in scientific pitch notation
+  switch (pitch % 12) {
+    case 0: printf("C"); break;
+    case 1: printf("C#/Db"); break;
+    case 2: printf("D"); break;
+    case 3: printf("D#/Eb"); break;
+    case 4: printf("E"); break;
+    case 5: printf("F"); break;
+    case 6: printf("F#/Gb"); break;
+    case 7: printf("G"); break;
+    case 8: printf("G#/Ab"); break;
+    case 9: printf("A"); break;
+    case 10: printf("A#/Bb"); break;
+    case 11: printf("B"); break;
+  }
+  printf("%u\n", pitch / 12);
+}
+
 int main(int argc, char const *argv[]) {
 
   // Tests for correct amount of input variables
@@ -389,7 +409,7 @@ int main(int argc, char const *argv[]) {
   printf("Tempo = %u, Frames/beat = %u\n", tempo, fpb);
   int frame_duration = (int) (((double) 1000.0 / ((double) tempo / 60)) / fpb);
   printf("Frame duration = %ums\n", frame_duration);
-  long duration = ((fsize - 0x70) / (4 * instrument_count)) * frame_duration;
+  long duration = ((fsize - 0x70) / (4 * instrument_count)) * frame_duration + 100; // pad by 100ms
   printf("Total duration = %lums\n", duration);
   printf("\n");
 
@@ -425,9 +445,41 @@ int main(int argc, char const *argv[]) {
     instruments[i] = instrument;
   }
 
-  //uint64_t sustain_ctr[instrument_count];
-  //Note buffer[instrument_count];
+  long sustain_ctrs[instrument_count]; // Sustain counters
+  long sustain_ptrs[instrument_count]; // Sustain pointers
+  uint8_t buffer[instrument_count][4];
   printInstruments(instruments, instrument_count);
+  long frame = 0;
+
+  int16_t *waveform = calloc((duration * SAMPLE_RATE) / 1000, sizeof(int16_t));
+
+  // Parsing Loop
+  int alive = 1;
+  while (ftell(inp) < fsize && alive) {
+    for (int i = 0; i < instrument_count; i++) {
+      fread(buffer[i], 1, 4, inp);
+      if (buffer[i][1] != 0) {
+        printf("I%u at frame %lu: ", i, frame);
+        printPitch(buffer[i][0]);
+        if (sustain_ctrs[i] != 0) {
+
+        }
+        uint16_t note_dur = (buffer[i][3] << 8) | buffer[i][2];
+        if (note_dur == 0) {
+          sustain_ctrs[i] = 1;
+          sustain_ptrs[i] = frame;
+        }
+      } else {
+
+      }
+      if (buffer[i][0] == 0xFF && buffer[i][1] == 0xFF && buffer[i][2] == 0xFF && buffer[i][3] == 0xFF) alive = 0;
+
+    }
+    frame++;
+  }
+
+  fclose(inp);
+  free(waveform);
 
   return EXIT_SUCCESS;
 }
