@@ -641,6 +641,7 @@ int main(int argc, char const *argv[]) {
       if (buffer[i][0] == 0xFF && buffer[i][1] == 0xFF && buffer[i][2] == 0xFF && buffer[i][3] == 0xFF) goto END;
 
     }
+    //printf("File pointer %lx\n", ftell(inp)); //debug
     frame++;
   }
 
