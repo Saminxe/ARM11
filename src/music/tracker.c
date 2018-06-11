@@ -140,8 +140,8 @@ int16_t *osc(ADSR envelope, Shape wave, double freq, int duration)
 
   // Initializes the waveform to be returned.
   uint32_t wave_length = ((duration * SAMPLE_RATE) / 1000) + rel_len;
-  printf("%u samples\n", wave_length);
   int16_t *waveform = calloc(wave_length, sizeof(int16_t));
+  assert(waveform != NULL);
   uint32_t wave_ptr = 0;
   int16_t sus_amplitude = (int16_t) (((double) envelope.sus / 100) * INT16_MAX);
 
@@ -164,7 +164,7 @@ int16_t *osc(ADSR envelope, Shape wave, double freq, int duration)
     if (dec_len != 0) {
       for (int i = 0; i < dec_len; i++) {
         if (wave_ptr < wave_length) {
-          *(waveform + wave_ptr) = INT16_MAX - (int16_t) (((double) i / dec_len) * sus_amplitude);
+          *(waveform + wave_ptr) = INT16_MAX - (int16_t) (((double) i / dec_len) * (INT16_MAX - sus_amplitude));
           wave_ptr++;
         }
       }
@@ -192,7 +192,6 @@ int16_t *osc(ADSR envelope, Shape wave, double freq, int duration)
 
     // Calculates the number of frames a single wave takes up.
     int period = (int) ((1.0 / freq) * SAMPLE_RATE);
-    printf("period = %fms, %d frames\n", 1000.0 / freq, period);
 
     // Populates the waveform with the appropriate wave shape.
     // For square waves, the pulse width ratio is assumed to be 50%.
@@ -267,19 +266,9 @@ int16_t *scale(double scalar, int16_t *wave, int wave_size)
   return wave;
 }
 
-int16_t *superpose(int16_t *wave1, int size1, int16_t *wave2, int size2)
+void superpose(int16_t *wave1, int size1, int16_t *wave2, int size2)
 {
-  if (size1 < size2) {
-    for (int i = 0; i < size1; i++) {
-      *(wave2 + i) = *(wave1 + i) + *(wave2 + i);
-    }
-    return wave2;
-  } else {
-    for (int i = 0; i < size2; i++) {
-      *(wave1 + i) = *(wave1 + i) + *(wave2 + i);
-    }
-    return wave1;
-  }
+  for (int i = 0; i < size1; i++) if (i < size2) wave1[i] += wave2[i];
 }
 
 /***
@@ -310,13 +299,22 @@ int16_t *instrument(InstrParams parameters, int note, int duration, uint8_t velo
   int osc3_size = ((parameters.osc3.envelope.rel + duration) * SAMPLE_RATE) / 1000;
   double osc1_note =
     note + (parameters.osc1.detune / 100) + (12 * parameters.osc1.octave);
-  double osc1_frequency = (A) * pow(FREQUENCY_RATIO, osc1_note - 69);
+  double osc1_note_offset = osc1_note - 69;
+  double osc1_frequency = (A) * (
+    (osc1_note_offset > 0) ? pow(FREQUENCY_RATIO, osc1_note_offset) :
+    1 / pow(FREQUENCY_RATIO, -osc1_note_offset));
   double osc2_note =
     note + (parameters.osc2.detune / 100) + (12 * parameters.osc2.octave);
-  double osc2_frequency = (A) * pow(FREQUENCY_RATIO, osc2_note - 69);
+  double osc2_note_offset = osc2_note - 69;
+  double osc2_frequency = (A) * (
+    (osc2_note_offset > 0) ? pow(FREQUENCY_RATIO, osc2_note_offset) :
+    1 / pow(FREQUENCY_RATIO, -osc2_note_offset));
   double osc3_note =
     note + (parameters.osc3.detune / 100) + (12 * parameters.osc3.octave);
-  double osc3_frequency = (A) * pow(FREQUENCY_RATIO, osc3_note - 69);
+  double osc3_note_offset = osc3_note - 69;
+  double osc3_frequency = (A) * (
+    (osc3_note_offset > 0) ? pow(FREQUENCY_RATIO, osc3_note_offset) :
+    1 / pow(FREQUENCY_RATIO, -osc3_note_offset));
   int16_t *osc1_wave = osc(parameters.osc1.envelope, parameters.osc1.waveshape, osc1_frequency, duration);
   int16_t *osc2_wave = osc(parameters.osc2.envelope, parameters.osc2.waveshape, osc2_frequency, duration);
   int16_t *osc3_wave = osc(parameters.osc3.envelope, parameters.osc3.waveshape, osc3_frequency, duration);
@@ -329,9 +327,9 @@ int16_t *instrument(InstrParams parameters, int note, int duration, uint8_t velo
   osc2_wave = scale(osc2_mix, osc2_wave, osc2_size);
   osc3_wave = scale(osc3_mix, osc3_wave, osc3_size);
 
-  waveform = superpose(waveform, wave_length, osc1_wave, osc1_size);
-  waveform = superpose(waveform, wave_length, osc2_wave, osc2_size);
-  waveform = superpose(waveform, wave_length, osc3_wave, osc3_size);
+  superpose(waveform, wave_length, osc1_wave, osc1_size);
+  superpose(waveform, wave_length, osc2_wave, osc2_size);
+  superpose(waveform, wave_length, osc3_wave, osc3_size);
 
   free(osc1_wave);
   free(osc2_wave);
@@ -560,7 +558,7 @@ int main(int argc, char const *argv[]) {
   printf("Tempo = %u, Frames/beat = %u\n", tempo, fpb);
   int frame_duration = (int) (((double) 1000.0 / ((double) tempo / 60)) / fpb);
   printf("Frame duration = %ums\n", frame_duration);
-  long duration = ((fsize - 0x70) / (4 * instrument_count)) * frame_duration + 100; // pad by 100ms
+  long duration = ((fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count)) * frame_duration + 100; // pad by 100ms
   printf("Total duration = %lums\n", duration);
   printf("\n");
 
@@ -600,6 +598,10 @@ int main(int argc, char const *argv[]) {
   for (int i = 0; i < instrument_count; i++) sustain_ctrs[i] = 0; // Sustain counters
   long sustain_ptrs[instrument_count];
   for (int i = 0; i < instrument_count; i++) sustain_ptrs[i] = 0; // Sustain pointers
+  long sustain_vals[instrument_count];
+  for (int i = 0; i < instrument_count; i++) sustain_vals[i] = 0; // Sustained note values
+  long sustain_vels[instrument_count];
+  for (int i = 0; i < instrument_count; i++) sustain_vels[i] = 0; // Sustained note velocities
   uint8_t buffer[instrument_count][4];
   printInstruments(instruments, instrument_count);
   long frame = 0;
@@ -608,31 +610,30 @@ int main(int argc, char const *argv[]) {
   int16_t *master = calloc(master_length, sizeof(int16_t)); // Initialize the master track
 
   // Parsing Loop
-  while (frame < ((fsize - 0x70) / (4 * instrument_count))) {
-    for (int i = 0; i < instrument_count; i++) {
+  while (frame < ((fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count))) {
+    for (long i = 0; i < instrument_count; i++) {
       fread(buffer[i], 1, 4, inp);
-      if (buffer[i][1] != 0 && buffer[i][0] != 0xFF) {
+      if (buffer[i][1] != 0) {
         if (sustain_ctrs[i] != 0) {
           int play_dur = sustain_ctrs[i] * frame_duration;
           int offset = sustain_ptrs[i] * frame_duration;
-          printf("I%u: Prior note was %ums long\n", i, play_dur);
-          int16_t *play_note = instrument(instruments[i], buffer[i][0], play_dur, buffer[i][1]);
-          printf("Synthesized\n");
+          int16_t *play_note = instrument(instruments[i], sustain_vals[i], play_dur, sustain_vels[i]);
           mergeWaveformAtOffset(master, master_length, play_note, (play_dur * SAMPLE_RATE) / 1000, offset);
-          printf("Merged\n");
           free(play_note);
           sustain_ctrs[i] = 0;
         }
-        printf("I%u at frame %lu: ", i, frame);
-        printPitch(buffer[i][0]);
         uint16_t note_dur = (buffer[i][3] << 8) | buffer[i][2];
-        if (note_dur == 0) {
-          sustain_ctrs[i] = 1;
-          sustain_ptrs[i] = frame;
-        } else {
-          int16_t *play_note = instrument(instruments[i], buffer[i][0], note_dur, buffer[i][1]);
-          mergeWaveformAtOffset(master, master_length, play_note, (note_dur * SAMPLE_RATE) / 1000, frame * frame_duration);
-          free(play_note);
+          if (buffer[i][0] != 0xFF) {
+          if (note_dur == 0) {
+            sustain_ctrs[i] = 1;
+            sustain_ptrs[i] = frame;
+            sustain_vals[i] = buffer[i][0];
+            sustain_vels[i] = buffer[i][1];
+          } else {
+            int16_t *play_note = instrument(instruments[i], buffer[i][0], note_dur, buffer[i][1]);
+            mergeWaveformAtOffset(master, master_length, play_note, (note_dur * SAMPLE_RATE) / 1000, frame * frame_duration);
+            free(play_note);
+          }
         }
       } else {
         if (sustain_ctrs[i] != 0) sustain_ctrs[i]++;
@@ -643,7 +644,7 @@ int main(int argc, char const *argv[]) {
     frame++;
   }
 
-  END: printf("Synthesis interrupted\n");
+  END: printf("Synthesis finished\n");
 
   Wave master_wave = makeWave(SAMPLE_RATE, 1, 16);
   waveSetDuration(&master_wave, duration);
