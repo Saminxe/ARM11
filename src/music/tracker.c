@@ -140,6 +140,7 @@ int16_t *osc(ADSR envelope, Shape wave, double freq, int duration)
 
   // Initializes the waveform to be returned.
   uint32_t wave_length = ((duration * SAMPLE_RATE) / 1000) + rel_len;
+  printf("%u samples\n", wave_length);
   int16_t *waveform = calloc(wave_length, sizeof(int16_t));
   uint32_t wave_ptr = 0;
   int16_t sus_amplitude = (int16_t) (((double) envelope.sus / 100) * INT16_MAX);
@@ -203,7 +204,7 @@ int16_t *osc(ADSR envelope, Shape wave, double freq, int duration)
         } else {
           *(waveform + wave_ptr) = - envelope;
         }
-        printf("Frame %u: %d\n", wave_ptr, *(waveform + wave_ptr));
+        //printf("Frame %u: %d\n", wave_ptr, *(waveform + wave_ptr));
         wave_ptr++;
       }
     } else if (wave == SAW) {
@@ -216,7 +217,7 @@ int16_t *osc(ADSR envelope, Shape wave, double freq, int duration)
         }
         value = (int16_t) (envelope_ratio * value);
         *(waveform + wave_ptr) = value;
-        printf("Frame %u: %d\n", wave_ptr, value);
+        //printf("Frame %u: %d\n", wave_ptr, value);
         wave_ptr++;
       }
     } else if (wave == TRIANGLE) {
@@ -231,7 +232,7 @@ int16_t *osc(ADSR envelope, Shape wave, double freq, int duration)
         }
         value = (int16_t) (envelope_ratio * value);
         *(waveform + wave_ptr) = value;
-        printf("Frame %u: %d\n", wave_ptr, value);
+        //printf("Frame %u: %d\n", wave_ptr, value);
         wave_ptr++;
       }
     } else if (wave == NOISE) { // v bad implementation of noise, do not use
@@ -241,7 +242,7 @@ int16_t *osc(ADSR envelope, Shape wave, double freq, int duration)
         int16_t value = (rand() % UINT16_MAX) - INT16_MAX;
         value = (int16_t) (envelope_ratio * value);
         *(waveform + wave_ptr) = value;
-        printf("Frame %u: %d\n", wave_ptr, value);
+        //printf("Frame %u: %d\n", wave_ptr, value);
         wave_ptr++;
       }
     } else if (wave == SINE) {
@@ -250,12 +251,11 @@ int16_t *osc(ADSR envelope, Shape wave, double freq, int duration)
         int16_t value = (int) (sin(((2 * M_PI) / period) * wave_ptr) * INT16_MAX);
         value = (int16_t) (envelope_ratio * value);
         *(waveform + wave_ptr) = value;
-        printf("Frame %u: %d\n", wave_ptr, value);
+        //printf("Frame %u: %d\n", wave_ptr, value);
         wave_ptr++;
       }
     }
   }
-
   return waveform;
 }
 
@@ -361,7 +361,158 @@ void printPitch(int pitch)
     case 10: printf("A#/Bb"); break;
     case 11: printf("B"); break;
   }
-  printf("%u\n", pitch / 12);
+  printf("%u\n", (pitch / 12) - 1);
+}
+
+int16_t *mergeWaveformAtOffset(int16_t *master, long master_length, int16_t *wave, long wave_length, long offset)
+{
+  long long int sample_offset = (offset * SAMPLE_RATE) / 1000;
+  for (int i = 0; i < wave_length; i++) {
+    if (sample_offset + i >= master_length) break;
+    int val = *(master + sample_offset + i) + *(wave + i);
+    *(master + sample_offset + i) = (val > INT16_MAX) ? INT16_MAX : val;
+  }
+  return master;
+}
+
+/*** Wavewriter code ***/
+int isBigEndian() {
+  int test = 1;
+  char *p = (char*)&test;
+
+  return p[0] == 0;
+}
+void reverseEndianness(const long long int size, void* value){
+  int i;
+  char result[32];
+  for( i=0; i<size; i+=1 ){
+    result[i] = ((char*)value)[size-i-1];
+  }
+  for( i=0; i<size; i+=1 ){
+    ((char*)value)[i] = result[i];
+  }
+}
+void toBigEndian(const long long int size, void* value){
+  char needsFix = !( (1 && isBigEndian()) || (0 && !isBigEndian()) );
+  if( needsFix ){
+    reverseEndianness(size,value);
+  }
+}
+void toLittleEndian(const long long int size, void* value){
+  char needsFix = !( (0 && isBigEndian()) || (1 && !isBigEndian()) );
+  if( needsFix ){
+    reverseEndianness(size,value);
+  }
+}
+
+WaveHeader makeWaveHeader(int const sampleRate, short int const numChannels, short int const bitsPerSample)
+{
+  WaveHeader myHeader;
+
+  myHeader.chunkId[0] = 'R';
+  myHeader.chunkId[1] = 'I';
+  myHeader.chunkId[2] = 'F';
+  myHeader.chunkId[3] = 'F';
+  myHeader.format[0] = 'W';
+  myHeader.format[1] = 'A';
+  myHeader.format[2] = 'V';
+  myHeader.format[3] = 'E';
+
+  myHeader.subChunk1Id[0] = 'f';
+  myHeader.subChunk1Id[1] = 'm';
+  myHeader.subChunk1Id[2] = 't';
+  myHeader.subChunk1Id[3] = ' ';
+  myHeader.audioFormat = 1;
+  myHeader.numChannels = numChannels;
+  myHeader.sampleRate = sampleRate;
+  myHeader.bitsPerSample = bitsPerSample;
+  myHeader.byteRate = myHeader.sampleRate * myHeader.numChannels * myHeader.bitsPerSample / 8;
+  myHeader.blockAlign = myHeader.numChannels * myHeader.bitsPerSample/8;
+
+  myHeader.subChunk2Id[0] = 'd';
+  myHeader.subChunk2Id[1] = 'a';
+  myHeader.subChunk2Id[2] = 't';
+  myHeader.subChunk2Id[3] = 'a';
+
+  // All sizes for later:
+  // chuckSize = 4 + (8 + subChunk1Size) + (8 + subChubk2Size)
+  // subChunk1Size is constanst, i'm using 16 and staying with PCM
+  // subChunk2Size = nSamples * nChannels * bitsPerSample/8
+  // Whenever a sample is added:
+  //    chunkSize += (nChannels * bitsPerSample/8)
+  //    subChunk2Size += (nChannels * bitsPerSample/8)
+  myHeader.chunkSize = 4+8+16+8+0;
+  myHeader.subChunk1Size = 16;
+  myHeader.subChunk2Size = 0;
+
+  return myHeader;
+}
+
+Wave makeWave(int const sampleRate, short int const numChannels, short int const bitsPerSample)
+{
+  Wave myWave;
+  myWave.header = makeWaveHeader(sampleRate,numChannels,bitsPerSample);
+  return myWave;
+}
+
+void freeWave(Wave* wave)
+{
+  free( wave->data );
+}
+
+void waveSetDuration(Wave* wave, const long long int milliseconds)
+{
+  long long int totalBytes = (long long int) ((wave->header.byteRate * milliseconds) / 1000);
+  wave->data = (char*)malloc(totalBytes);
+  wave->index = 0;
+  wave->size = totalBytes;
+  wave->nSamples = (long long int) wave->header.numChannels * ((wave->header.sampleRate * milliseconds) / 1000);
+  wave->header.chunkSize = 4+8+16+8+totalBytes;
+  wave->header.subChunk2Size = totalBytes;
+}
+
+void waveAddSample16(Wave* wave, const int16_t* samples)
+{
+  int i;
+  int sample16bit;
+  char* sample;
+  for( i=0; i<wave->header.numChannels; i+= 1){
+    sample16bit = samples[i];
+    toLittleEndian(2, (void*) &sample16bit);
+    sample = (char*)&sample16bit;
+    wave->data[wave->index + 0] = sample[0];
+    wave->data[wave->index + 1] = sample[1];
+    wave->index += 2;
+  }
+}
+
+void waveToFile(Wave* wave, const char* filename)
+{
+  toLittleEndian(sizeof(int), (void*)&(wave->header.chunkSize));
+  toLittleEndian(sizeof(int), (void*)&(wave->header.subChunk1Size));
+  toLittleEndian(sizeof(short int), (void*)&(wave->header.audioFormat));
+  toLittleEndian(sizeof(short int), (void*)&(wave->header.numChannels));
+  toLittleEndian(sizeof(int), (void*)&(wave->header.sampleRate));
+  toLittleEndian(sizeof(int), (void*)&(wave->header.byteRate));
+  toLittleEndian(sizeof(short int), (void*)&(wave->header.blockAlign));
+  toLittleEndian(sizeof(short int), (void*)&(wave->header.bitsPerSample));
+  toLittleEndian(sizeof(int), (void*)&(wave->header.subChunk2Size));
+
+  FILE *file;
+  file = fopen(filename, "wb");
+  fwrite( &(wave->header), sizeof(WaveHeader), 1, file );
+  fwrite( (void*)(wave->data), sizeof(char), wave->size, file );
+  fclose( file );
+
+  toLittleEndian(sizeof(int), (void*)&(wave->header.chunkSize));
+  toLittleEndian(sizeof(int), (void*)&(wave->header.subChunk1Size));
+  toLittleEndian(sizeof(short int), (void*)&(wave->header.audioFormat));
+  toLittleEndian(sizeof(short int), (void*)&(wave->header.numChannels));
+  toLittleEndian(sizeof(int), (void*)&(wave->header.sampleRate));
+  toLittleEndian(sizeof(int), (void*)&(wave->header.byteRate));
+  toLittleEndian(sizeof(short int), (void*)&(wave->header.blockAlign));
+  toLittleEndian(sizeof(short int), (void*)&(wave->header.bitsPerSample));
+  toLittleEndian(sizeof(int), (void*)&(wave->header.subChunk2Size));
 }
 
 int main(int argc, char const *argv[]) {
@@ -445,41 +596,71 @@ int main(int argc, char const *argv[]) {
     instruments[i] = instrument;
   }
 
-  long sustain_ctrs[instrument_count]; // Sustain counters
-  long sustain_ptrs[instrument_count]; // Sustain pointers
+  long sustain_ctrs[instrument_count];
+  for (int i = 0; i < instrument_count; i++) sustain_ctrs[i] = 0; // Sustain counters
+  long sustain_ptrs[instrument_count];
+  for (int i = 0; i < instrument_count; i++) sustain_ptrs[i] = 0; // Sustain pointers
   uint8_t buffer[instrument_count][4];
   printInstruments(instruments, instrument_count);
   long frame = 0;
 
-  int16_t *waveform = calloc((duration * SAMPLE_RATE) / 1000, sizeof(int16_t));
+  long master_length = (duration * SAMPLE_RATE) / 1000;
+  int16_t *master = calloc(master_length, sizeof(int16_t)); // Initialize the master track
 
   // Parsing Loop
-  int alive = 1;
-  while (ftell(inp) < fsize && alive) {
+  while (frame < ((fsize - 0x70) / (4 * instrument_count))) {
     for (int i = 0; i < instrument_count; i++) {
       fread(buffer[i], 1, 4, inp);
-      if (buffer[i][1] != 0) {
+      if (buffer[i][1] != 0 && buffer[i][0] != 0xFF) {
+        if (sustain_ctrs[i] != 0) {
+          int play_dur = sustain_ctrs[i] * frame_duration;
+          int offset = sustain_ptrs[i] * frame_duration;
+          printf("I%u: Prior note was %ums long\n", i, play_dur);
+          int16_t *play_note = instrument(instruments[i], buffer[i][0], play_dur, buffer[i][1]);
+          printf("Synthesized\n");
+          mergeWaveformAtOffset(master, master_length, play_note, (play_dur * SAMPLE_RATE) / 1000, offset);
+          printf("Merged\n");
+          free(play_note);
+          sustain_ctrs[i] = 0;
+        }
         printf("I%u at frame %lu: ", i, frame);
         printPitch(buffer[i][0]);
-        if (sustain_ctrs[i] != 0) {
-
-        }
         uint16_t note_dur = (buffer[i][3] << 8) | buffer[i][2];
         if (note_dur == 0) {
           sustain_ctrs[i] = 1;
           sustain_ptrs[i] = frame;
+        } else {
+          int16_t *play_note = instrument(instruments[i], buffer[i][0], note_dur, buffer[i][1]);
+          mergeWaveformAtOffset(master, master_length, play_note, (note_dur * SAMPLE_RATE) / 1000, frame * frame_duration);
+          free(play_note);
         }
       } else {
-
+        if (sustain_ctrs[i] != 0) sustain_ctrs[i]++;
       }
-      if (buffer[i][0] == 0xFF && buffer[i][1] == 0xFF && buffer[i][2] == 0xFF && buffer[i][3] == 0xFF) alive = 0;
+      if (buffer[i][0] == 0xFF && buffer[i][1] == 0xFF && buffer[i][2] == 0xFF && buffer[i][3] == 0xFF) goto END;
 
     }
     frame++;
   }
 
+  END: printf("Synthesis interrupted\n");
+
+  Wave master_wave = makeWave(SAMPLE_RATE, 1, 16);
+  waveSetDuration(&master_wave, duration);
+  for (uint32_t master_ptr = 0; master_ptr < master_length; master_ptr++) {
+    int16_t monoArray[1];
+    monoArray[0] = master[master_ptr];
+    waveAddSample16(&master_wave, monoArray);
+  }
+
+  waveToFile(&master_wave, argv[2]);
+
+  freeWave(&master_wave);
+
+  printf("Wave written to %s!\n", argv[2]);
+
   fclose(inp);
-  free(waveform);
+  free(master);
 
   return EXIT_SUCCESS;
 }
