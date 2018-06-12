@@ -559,7 +559,7 @@ int main(int argc, char const *argv[]) {
   printf("Frame duration = %ums\n", frame_duration);
   unsigned long duration = ((fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count)) * frame_duration + 100; // pad by 100ms
   unsigned long long num_samples = (duration * SAMPLE_RATE) / 1000;
-  printf("Total duration = %lums, %lu samples\n", duration, num_samples);
+  printf("Total duration = %lums, %llu samples\n", duration, num_samples);
   printf("\n");
 
   InstrParams instruments[instrument_count];
