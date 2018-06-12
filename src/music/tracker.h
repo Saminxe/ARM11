@@ -33,6 +33,7 @@ typedef struct {
   Osc osc1;
   Osc osc2;
   Osc osc3;
+  long max_release;
 } InstrParams;
 
 typedef struct {
@@ -48,29 +49,29 @@ typedef struct {
 } Frame;
 
 typedef struct {
-    char chunkId[4];
-    int  chunkSize;
-    char format[4];
+  char chunkId[4];
+  int  chunkSize;
+  char format[4];
 
-    char subChunk1Id[4];
-    int  subChunk1Size;
-    short int audioFormat;
-    short int numChannels;
-    int sampleRate;
-    int byteRate;
-    short int blockAlign;
-    short int bitsPerSample;
+  char subChunk1Id[4];
+  int  subChunk1Size;
+  short int audioFormat;
+  short int numChannels;
+  int sampleRate;
+  int byteRate;
+  short int blockAlign;
+  short int bitsPerSample;
 
-    char subChunk2Id[4];
-    int  subChunk2Size;
+  char subChunk2Id[4];
+  int  subChunk2Size;
 } WaveHeader;
 
 typedef struct {
-    WaveHeader header;
-    char* data;
-    long long int index;
-    long long int size;
-    long long int nSamples;
+  WaveHeader header;
+  char* data;
+  long long int index;
+  long long int size;
+  long long int nSamples;
 } Wave;
 
 Wave makeWave(int const sampleRate, short int const numChannels, short int const bitsPerSample);

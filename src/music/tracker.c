@@ -338,7 +338,6 @@ int16_t *instrument(InstrParams parameters, int note, int duration, uint8_t velo
   double velocity_scalar = (double) velocity / 255;
 
   waveform = scale(velocity_scalar, waveform, wave_length);
-
   return waveform;
 }
 
@@ -362,9 +361,9 @@ void printPitch(int pitch)
   printf("%u\n", (pitch / 12) - 1);
 }
 
-int16_t *mergeWaveformAtOffset(int16_t *master, long master_length, int16_t *wave, long wave_length, long offset)
+int16_t *mergeWaveformAtOffset(int16_t *master, long long master_length, int16_t *wave, long long wave_length, long long offset)
 {
-  long long int sample_offset = (offset * SAMPLE_RATE) / 1000;
+  long long sample_offset = (offset * SAMPLE_RATE) / 1000;
   for (int i = 0; i < wave_length; i++) {
     if (sample_offset + i >= master_length) break;
     int val = *(master + sample_offset + i) + *(wave + i);
@@ -558,13 +557,15 @@ int main(int argc, char const *argv[]) {
   printf("Tempo = %u, Frames/beat = %u\n", tempo, fpb);
   int frame_duration = (int) (((double) 1000.0 / ((double) tempo / 60)) / fpb);
   printf("Frame duration = %ums\n", frame_duration);
-  long duration = ((fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count)) * frame_duration + 100; // pad by 100ms
-  printf("Total duration = %lums\n", duration);
+  unsigned long duration = ((fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count)) * frame_duration + 100; // pad by 100ms
+  unsigned long long num_samples = (duration * SAMPLE_RATE) / 1000;
+  printf("Total duration = %lums, %lu samples\n", duration, num_samples);
   printf("\n");
 
   InstrParams instruments[instrument_count];
   for (int i = 0; i < instrument_count; i++) {
     Osc oscillators[3];
+    long max_release = 0;
     for (int j = 0; j < 3; j++) {
       uint16_t atk;
       uint16_t dec;
@@ -589,8 +590,9 @@ int main(int argc, char const *argv[]) {
       ADSR osc_env = {atk, dec, sus, rel};
       Osc oscillator = {osc_env, shape, mix, octave, detune};
       oscillators[j] = oscillator;
+      if (max_release < rel) max_release = rel;
     }
-    InstrParams instrument = {oscillators[0], oscillators[1], oscillators[2]};
+    InstrParams instrument = {oscillators[0], oscillators[1], oscillators[2], max_release};
     instruments[i] = instrument;
   }
 
@@ -604,21 +606,19 @@ int main(int argc, char const *argv[]) {
   for (int i = 0; i < instrument_count; i++) sustain_vels[i] = 0; // Sustained note velocities
   uint8_t buffer[instrument_count][4];
   printInstruments(instruments, instrument_count);
-  long frame = 0;
-
-  long master_length = (duration * SAMPLE_RATE) / 1000;
-  int16_t *master = calloc(master_length, sizeof(int16_t)); // Initialize the master track
+  unsigned long long frame = 0;
+  int16_t *master = calloc(num_samples, sizeof(int16_t)); // Initialize the master track
 
   // Parsing Loop
   while (frame < ((fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count))) {
-    for (long i = 0; i < instrument_count; i++) {
+    for (int i = 0; i < instrument_count; i++) {
       fread(buffer[i], 1, 4, inp);
       if (buffer[i][1] != 0) {
         if (sustain_ctrs[i] != 0) {
           int play_dur = sustain_ctrs[i] * frame_duration;
           int offset = sustain_ptrs[i] * frame_duration;
           int16_t *play_note = instrument(instruments[i], sustain_vals[i], play_dur, sustain_vels[i]);
-          mergeWaveformAtOffset(master, master_length, play_note, (play_dur * SAMPLE_RATE) / 1000, offset);
+          mergeWaveformAtOffset(master, num_samples, play_note, ((play_dur+ instruments[i].max_release) * SAMPLE_RATE) / 1000, offset);
           free(play_note);
           sustain_ctrs[i] = 0;
         }
@@ -631,7 +631,7 @@ int main(int argc, char const *argv[]) {
             sustain_vels[i] = buffer[i][1];
           } else {
             int16_t *play_note = instrument(instruments[i], buffer[i][0], note_dur, buffer[i][1]);
-            mergeWaveformAtOffset(master, master_length, play_note, (note_dur * SAMPLE_RATE) / 1000, frame * frame_duration);
+            mergeWaveformAtOffset(master, num_samples, play_note, ((note_dur + instruments[i].max_release) * SAMPLE_RATE) / 1000, frame * frame_duration);
             free(play_note);
           }
         }
@@ -641,24 +641,18 @@ int main(int argc, char const *argv[]) {
       if (buffer[i][0] == 0xFF && buffer[i][1] == 0xFF && buffer[i][2] == 0xFF && buffer[i][3] == 0xFF) goto END;
 
     }
-    //printf("File pointer %lx\n", ftell(inp)); //debug
     frame++;
   }
-
   END: printf("Synthesis finished\n");
-
   Wave master_wave = makeWave(SAMPLE_RATE, 1, 16);
   waveSetDuration(&master_wave, duration);
-  for (uint32_t master_ptr = 0; master_ptr < master_length; master_ptr++) {
+  for (long long master_ptr = 0; master_ptr < num_samples; master_ptr++) {
     int16_t monoArray[1];
     monoArray[0] = master[master_ptr];
     waveAddSample16(&master_wave, monoArray);
   }
-
   waveToFile(&master_wave, argv[2]);
-
   freeWave(&master_wave);
-
   printf("Wave written to %s!\n", argv[2]);
 
   fclose(inp);
