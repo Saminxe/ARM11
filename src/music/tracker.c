@@ -658,5 +658,7 @@ int main(int argc, char const *argv[]) {
   fclose(inp);
   free(master);
 
+  printf("Playing your music...\n");
+
   return EXIT_SUCCESS;
 }
