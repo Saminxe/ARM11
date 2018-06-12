@@ -10,6 +10,10 @@
 #define FREQUENCY_RATIO 1.05946309436 // twelfth root of 2 for equal temperament
 #define SAMPLE_RATE 44100 // sample rate in Hz
 
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
+
 typedef enum {
   SQUARE, SAW, TRIANGLE, SINE, NOISE
 } Shape;
