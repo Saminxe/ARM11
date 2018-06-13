@@ -282,6 +282,10 @@ int main(void) {
 
   srand(time(NULL));
   char *note = malloc(sizeof(char*));
+  if (note == NULL) {
+    printf("Note allocation in memory failed\n");
+    exit(EXIT_FAILURE);
+  }
   scanf("%s", note);
   uint8_t *muse;
   uint8_t temp = enumToInt(note);
