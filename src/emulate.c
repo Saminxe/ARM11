@@ -17,7 +17,7 @@ void output(State state)
   for (int j = 0; j < 10; j++)
     printf("$%d  : %10d (0x%08x)\n", j, state.registers[j], state.registers[j]);
   for (int j = 10; j < 13; j++)
-      printf("$%d : %10d (0x%08x)\n", j, state.registers[j], state.registers[j]);
+    printf("$%d : %10d (0x%08x)\n", j, state.registers[j], state.registers[j]);
   printf("PC  : %10d (0x%08x)\n", state.registers[PC], state.registers[PC]);
   printf("CPSR: %10d (0x%08x)\n", state.registers[CPSR], state.registers[CPSR]);
   printf("Non-zero memory:\n");
@@ -29,7 +29,6 @@ void output(State state)
     i += 4;
   } while (i < MAX_MEMORY_ADDRESS);
 }
-/*** End of debugging tools ***/
 
 /*** Generic pattern matcher ***/
 int patternMatcher(uint32_t instr, uint32_t pattern, uint32_t mask)
@@ -93,9 +92,9 @@ void updateFlags(uint32_t result, int carry, State state) {
 uint32_t load(State state, uint32_t select) {
   if (0 <= select && select <= MAX_MEMORY_ADDRESS) {
     return state.memory[select] |
-      state.memory[select + 1] << 8 |
-      state.memory[select + 2] << 16 |
-      state.memory[select + 3] << 24;
+           state.memory[select + 1] << 8 |
+           state.memory[select + 2] << 16 |
+           state.memory[select + 3] << 24;
   } else if (select == 0x20200000) {
     printf("One GPIO pin from 0 to 9 has been accessed\n");
   } else if (select == 0x20200004) {
@@ -120,36 +119,44 @@ uint32_t ror(uint32_t value, uint8_t rotation) {
 
 // Apply shift according to shift type.
 uint32_t applyShiftType(uint32_t value, uint32_t instr, uint8_t amount, int set, State state) {
-  if(!(0 <= amount && amount <= 32)) printf("Amount: %d/n", amount);
-  int bit6 = getInstrBit(instr, 6);
-  int bit5 = getInstrBit(instr, 5);
+  assert(0 <= amount && amount <= 32);
+  uint8_t shift_type = (instr & 0x60) >> 5;
   uint32_t result = value;
   int carry = 0;
-  if (!bit6) {
-    if (!bit5) {
-      // 00 lsl
+  switch (shift_type) {
+    // 00 lsl
+    case 0: {
       if (amount > 0)
         carry = getInstrBit(value, 32 - amount);
       result = value << amount;
-    } else {
-      // 01 lsr
+      break;
+    }
+    // 01 lsr
+    case 1: {
       if (amount > 1)
         carry = getInstrBit(value, amount - 1);
       result = value >> amount;
+      break;
     }
-  } else {
-    if (!bit5) {
-      // 10 asr
+    // 10 asr
+    case 2: {
       if (amount > 1)
         carry = getInstrBit(value, amount - 1);
       result = value >> amount | 0xFFFFFFFF << (32 - amount);
-    } else {
-      // 11 ror
+      break;
+    }
+    // 11 ror
+    case 3: {
       if (amount > 1)
         carry = getInstrBit(value, amount - 1);
       result = value >> amount | value << (32 - amount);
+      break;
+    }
+    default: {
+      printf("Error in applyShiftType.\n");
     }
   }
+  // Set carry flag
   if (set)
     setUnset(C, carry, state);
   return result;
@@ -183,126 +190,104 @@ void checkBorrow(uint32_t a, uint32_t b, uint32_t res, State state) {
 /* All data processing instructions take the base address of the
   memory and registers, and the instruction as arguments */
 
-void dataProcess(State state, uint32_t instr)
-{
-  //printf("This is a data processing instruction\n");
+void dataProcess(State state, uint32_t instr) {
 
-  int immediate = getInstrBit(instr, 25); // I
-  int set = getInstrBit(instr,20); // S
-  uint8_t rn = (instr & 0x000F0000) >> 16; // Rn
-  uint8_t rd = (instr & 0x0000F000) >> 12; // Rd
-  uint32_t oprand2 = (instr & 0x00000FFF); // Operand2
+  int immediate = getInstrBit(instr, 25);
+  int set = getInstrBit(instr,20);
+  uint8_t rn = (instr & 0xF0000) >> 16;
+  uint8_t rd = (instr & 0xF000) >> 12;
+  uint32_t oprand2 = (instr & 0xFFF);
 
   // If Operand2 is an immediate value (I = 1)
   if (immediate) {
     // Rotation amount is twice the value in the 4 bit rotation field.
-    uint8_t rotate = (instr & 0x00000F00) >> 7;
-    uint32_t imm = instr & 0x000000FF;
+    uint8_t rotate = (instr & 0xF00) >> 7;
+    uint32_t imm = instr & 0xFF;
     // Rotate right by "rotate"
     oprand2 = ror(imm, rotate);
   } else {
-  // If Operand2 is a register (I = 0)
-    uint8_t rm = instr & 0x0000000F;
+  // Operand2 is a register (I = 0)
+    uint8_t rm = instr & 0xF;
     uint32_t value = state.registers[rm];
     uint8_t amount = 0;
     if (!getInstrBit(instr,4)) {
       // Bit 4 = 0; Shift by a constant amount.
-      amount = (instr & 0x00000F80) >> 7;
+      amount = (instr & 0xF80) >> 7;
     } else {
       // Bit 4 = 1; Shift specified by the bottom byte of Rs.
-      uint8_t rs = (instr & 0x00000F00) >> 8;
-      amount = state.registers[rs] & 0x000000FF;
+      uint8_t rs = (instr & 0xF00) >> 8;
+      amount = state.registers[rs] & 0xFF;
     }
     oprand2 = applyShiftType(value, instr, amount, set, state);
   }
 
   // Apply Opcode instructions
-  int opcode3 = getInstrBit(instr, 24);
-  int opcode2 = getInstrBit(instr, 23);
-  int opcode1 = getInstrBit(instr, 22);
-  int opcode0 = getInstrBit(instr, 21);
-  uint32_t result = 0x0;
-  if (opcode3) {
-    if (opcode2) {
-      if (opcode1) {
-        if (opcode0) {
-          //1111
-        } else {
-          //1110
-        }
-      } else {
-        if (opcode0) {
-          //1101 mov
-          state.registers[rd] = oprand2;
-        } else {
-          //1100 orr
-          state.registers[rd] = (result = state.registers[rn] | oprand2);
-        }
-      }
-    } else {
-      if (opcode1) {
-        if (opcode0) {
-          //1011
-        } else {
-          //1010 cmp
-          result = state.registers[rn] - oprand2;
-          //printf("%d\n", result);
-          if (set)
-            checkBorrow(state.registers[rn], oprand2, result, state);
-        }
-      } else {
-        if (opcode0) {
-          //1001 teq
-          result = state.registers[rn] ^ oprand2;
-        } else {
-          //1000 tst
-          result = state.registers[rn] & oprand2;
-        }
-      }
+  uint8_t opcode = (instr & 0x1E00000) >> 21;
+  uint32_t result = 0;
+  switch (opcode) {
+    case 0: {
+      //0000 and
+      state.registers[rd] = (result = state.registers[rn] & oprand2);
+      break;
     }
-  } else {
-    if (opcode2) {
-      if (opcode1) {
-        if (opcode0) {
-          //0111
-        } else {
-          //0110
-        }
-      } else {
-        if (opcode0) {
-          //0101
-        } else {
-          //0100 add
-          state.registers[rd] = (result = state.registers[rn] + oprand2);
-          if (set)
-            checkOverflow(state.registers[rn], oprand2, result, state);
-        }
-      }
-    } else {
-      if (opcode1) {
-        if (opcode0) {
-          //0011 rsb
-          state.registers[rd] = (result = oprand2 - state.registers[rn]);
-          if (set)
-            checkBorrow(oprand2, state.registers[rn], result, state);
-        } else {
-          //0010 sub
-          state.registers[rd] = (result = state.registers[rn] - oprand2);
-          if (set)
-            checkBorrow(state.registers[rn], oprand2, result, state);
-        }
-      } else {
-        if (opcode0) {
-          //0001 eor
-          state.registers[rd] = (result = state.registers[rn] ^ oprand2);
-        } else {
-          //0000 and
-          state.registers[rd] = (result = state.registers[rn] & oprand2);
-        }
-      }
+    case 1: {
+      //0001 eor
+      state.registers[rd] = (result = state.registers[rn] ^ oprand2);
+      break;
+    }
+    case 2: {
+      //0010 sub
+      state.registers[rd] = (result = state.registers[rn] - oprand2);
+      if (set)
+        checkBorrow(state.registers[rn], oprand2, result, state);
+      break;
+    }
+    case 3: {
+      //0011 rsb
+      state.registers[rd] = (result = oprand2 - state.registers[rn]);
+      if (set)
+        checkBorrow(oprand2, state.registers[rn], result, state);
+      break;
+    }
+    case 4: {
+      //0100 add
+      state.registers[rd] = (result = state.registers[rn] + oprand2);
+      if (set)
+        checkOverflow(state.registers[rn], oprand2, result, state);
+      break;
+    }
+    case 8: {
+      //1000 tst
+      result = state.registers[rn] & oprand2;
+      break;
+    }
+    case 9: {
+      //1001 teq
+      result = state.registers[rn] ^ oprand2;
+      break;
+    }
+    case 10: {
+      //1010 cmp
+      result = state.registers[rn] - oprand2;
+      if (set)
+        checkBorrow(state.registers[rn], oprand2, result, state);
+      break;
+    }
+    case 12: {
+      //1100 orr
+      state.registers[rd] = (result = state.registers[rn] | oprand2);
+      break;
+    }
+    case 13: {
+      //1101 mov
+      state.registers[rd] = oprand2;
+      break;
+    }
+    default: {
+      printf("Error in dataProcess.\n");
+      break;
     }
   }
-
   // Set N and Z flags;
   if (set) {
     setUnset(N, result >> 31, state);
