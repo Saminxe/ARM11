@@ -186,6 +186,20 @@ void checkBorrow(uint32_t a, uint32_t b, uint32_t res, State state) {
   }
 }
 
+// Return 1 if address out of bound, 0 otherwise.
+int checkMemoryBounds(uint32_t address) {
+  if (address > MAX_MEMORY_ADDRESS &&
+    address != 0x20200000 &&
+    address != 0x20200004 &&
+    address != 0x20200008 &&
+    address != 0x2020001C &&
+    address != 0x20200028) {
+    printf("Error: Out of bounds memory access at address 0x%08x\n", address);
+    return 1;
+  }
+  return 0;
+}
+
 /*** Processing Instructions ***/
 /* All data processing instructions take the base address of the
   memory and registers, and the instruction as arguments */
@@ -196,7 +210,7 @@ void dataProcess(State state, uint32_t instr) {
   int set = getInstrBit(instr,20);
   uint8_t rn = (instr & 0xF0000) >> 16;
   uint8_t rd = (instr & 0xF000) >> 12;
-  uint32_t oprand2 = (instr & 0xFFF);
+  uint32_t oprand2 = 0;
 
   // If Operand2 is an immediate value (I = 1)
   if (immediate) {
@@ -285,7 +299,7 @@ void dataProcess(State state, uint32_t instr) {
     }
     default: {
       printf("Error in dataProcess.\n");
-      break;
+      return;
     }
   }
   // Set N and Z flags;
@@ -311,20 +325,6 @@ void multiply(State state, uint32_t instr)
     setUnset(N, state.registers[rd] >> 31, state);
     setUnset(Z, state.registers[rd] == 0, state);
   }
-}
-
-// Return 1 if address out of bound, 0 otherwise.
-int checkMemoryBounds(uint32_t address) {
-  if (address > MAX_MEMORY_ADDRESS &&
-    address != 0x20200000 &&
-    address != 0x20200004 &&
-    address != 0x20200008 &&
-    address != 0x2020001C &&
-    address != 0x20200028) {
-    printf("Error: Out of bounds memory access at address 0x%08x\n", address);
-    return 1;
-  }
-  return 0;
 }
 
 void singleDataTransfer(State state, uint32_t instr) {
@@ -432,8 +432,7 @@ void singleDataTransfer(State state, uint32_t instr) {
 
 void branchDataTransfer(State state, uint32_t instr)
 {
-  int32_t offset = instr & 0xFFFFFF;
-  offset = offset << 2;
+  int32_t offset = (instr & 0xFFFFFF) << 2;
   int checkSign = offset >> 25;
   if (checkSign) {
     offset = offset | 0xFC000000;
@@ -501,11 +500,6 @@ int main(int argc, char **argv)
   fseek(proc, 0, SEEK_SET); // Reset the seeker
   fread(state.memory, sizeof(uint8_t), procSize, proc); // Read the file into memory
   succ = process(state); // Call the pipeline loop
-  /* Part 3:
-   * write mem[0x2020 0004] | 0x0004 0000 into memory address 0x2020 0004‬ to set gpio 16 to output
-   * 0x2020 0028 to clear, 0x2020 001C to set (turn on)
-   * clear gpio 16: write 0x‭8000‬ into 0x2020 0028, to turn on write 0x8000 to 0x2020 001C
-   */
   output(state); // Print the result of the pipeline
   free(state.memory); // Free the memory
   free(state.registers); // Free the registers
