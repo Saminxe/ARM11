@@ -18,14 +18,14 @@ typedef enum {
   SQUARE, SAW, TRIANGLE, SINE, NOISE
 } Shape;
 
-typedef struct { // Dynamics Envelople (only supports non-curved envelopes rip)
+typedef struct _DIYA { // Dynamics Envelople (only supports non-curved envelopes rip)
   uint16_t atk; // Attack in ms
   uint16_t dec; // Decay in ms
   uint16_t sus; // Sus in %
   uint16_t rel; // Release in ms
 } ADSR;
 
-typedef struct {
+typedef struct _AKARSHA {
   ADSR envelope;
   Shape waveshape;
   uint8_t mix; // volume mix
@@ -33,14 +33,14 @@ typedef struct {
   int32_t detune; // detune in +/- cents (100 cents = tone)
 } Osc;
 
-typedef struct {
+typedef struct _MIN {
   Osc osc1;
   Osc osc2;
   Osc osc3;
   long max_release;
 } InstrParams;
 
-typedef struct {
+typedef struct _NOELLE {
   uint8_t pitch;
   uint8_t velocity;
   uint16_t duration;
