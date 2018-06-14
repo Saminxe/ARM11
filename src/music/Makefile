@@ -11,4 +11,5 @@ music: music.o
 
 clean:
 	rm -f $(wildcard *.o)
+	rm -f $(wildcard *.wav)
 	rm -f music
