@@ -81,6 +81,6 @@ typedef struct {
 Wave makeWave(int const sampleRate, short int const numChannels, short int const bitsPerSample);
 void freeWave(Wave* wave);
 void waveSetDuration(Wave* wave, const long long int milliseconds);
-void waveAddSample16(Wave* wave, const int16_t* samples);
+void waveAddSample16(Wave* wave, const int16_t sample16bit);
 void waveToFile(Wave* wave, const char* filename);
 int16_t *instrument(InstrParams parameters, int note, int duration, uint8_t velocity);

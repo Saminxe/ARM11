@@ -338,6 +338,8 @@ int16_t *instrument(InstrParams parameters, int note, int duration, uint8_t velo
   double velocity_scalar = (double) velocity / 255;
 
   waveform = scale(velocity_scalar, waveform, wave_length);
+
+  //printf("Played %u for %ums\n", note, duration);
   return waveform;
 }
 
@@ -468,19 +470,14 @@ void waveSetDuration(Wave* wave, const long long int milliseconds)
   wave->header.subChunk2Size = totalBytes;
 }
 
-void waveAddSample16(Wave* wave, const int16_t* samples)
+void waveAddSample16(Wave* wave, const int16_t sample16bit)
 {
-  int i;
-  int sample16bit;
-  char* sample;
-  for( i=0; i<wave->header.numChannels; i+= 1){
-    sample16bit = samples[i];
-    toLittleEndian(2, (void*) &sample16bit);
-    sample = (char*)&sample16bit;
-    wave->data[wave->index + 0] = sample[0];
-    wave->data[wave->index + 1] = sample[1];
-    wave->index += 2;
-  }
+  char *sample;
+  toLittleEndian(2, (void*) &sample16bit);
+  sample = (char*)&sample16bit;
+  wave->data[wave->index + 0] = sample[0];
+  wave->data[wave->index + 1] = sample[1];
+  wave->index += 2;
 }
 
 void waveToFile(Wave* wave, const char* filename)
@@ -521,7 +518,6 @@ int main(int argc, char const *argv[]) {
   }
 
   FILE *inp = fopen(argv[1], "rb");
-  //FILE *out = fopen(argv[2], "wb");
 
   if (inp == NULL) {
     printf("File Load Failure\n");
@@ -530,36 +526,48 @@ int main(int argc, char const *argv[]) {
 
   fseek(inp, 0, SEEK_END);
   long fsize = ftell(inp); // Get the size of the file
-  printf("Filesize = %lx\n", fsize);
   fseek(inp, 0, SEEK_SET); // Reset the seeker
 
   char damn[4];
   fread(damn, 1, 4, inp);
-  printf("%s\n", damn);
   if (strcmp(damn, "DAMN")) {
     fprintf(stderr, "%s\n", "Not a .damn file!!!");
     return EXIT_FAILURE;
   }
 
+  printf("DAMN TRACKER :: 2018\n");
+
   uint32_t instrument_count;
   fread(&instrument_count, 4, 1, inp);
-  printf("Number of voices = %u\n", instrument_count);
-  if (instrument_count == 0 || instrument_count > 16) {
+  if (instrument_count == 0) {
     fprintf(stderr, "%s\n", "Invalid amount of instruments!!!");
     return EXIT_FAILURE;
   }
 
   uint8_t tempo;
   fread(&tempo, 1, 1, inp);
+  if (tempo == 0) {
+    fprintf(stderr, "%s\n", "Invalid tempo!!!");
+    return EXIT_FAILURE;
+  }
+
   uint8_t fpb;
   fread(&fpb, 1, 1, inp);
+  if (fpb == 0) {
+    fprintf(stderr, "%s\n", "Invalid frames per bar!!!");
+    return EXIT_FAILURE;
+  }
+
+  printf("\nPlease review NO-L Synthesizer Settings: \n");
+
+  printf("Number of voices = %u\n", instrument_count);
   fseek(inp, 6, SEEK_CUR);
   printf("Tempo = %u, Frames/beat = %u\n", tempo, fpb);
   int frame_duration = (int) (((double) 1000.0 / ((double) tempo / 60)) / fpb);
   printf("Frame duration = %ums\n", frame_duration);
-  unsigned long duration = ((fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count)) * frame_duration + 100; // pad by 100ms
+  unsigned long long duration = ((fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count)) * frame_duration + 100; // pad by 100ms
   unsigned long long num_samples = (duration * SAMPLE_RATE) / 1000;
-  printf("Total duration = %lums, %llu samples\n", duration, num_samples);
+  printf("Total duration = %llums, %llu samples\n", duration, num_samples);
   printf("\n");
 
   InstrParams instruments[instrument_count];
@@ -608,9 +616,11 @@ int main(int argc, char const *argv[]) {
   printInstruments(instruments, instrument_count);
   unsigned long long frame = 0;
   int16_t *master = calloc(num_samples, sizeof(int16_t)); // Initialize the master track
+  unsigned long long frame_max = (fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count);
+  int synthesis_percent = frame_max / 100;
 
   // Parsing Loop
-  while (frame < ((fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count))) {
+  while (frame < frame_max) {
     for (int i = 0; i < instrument_count; i++) {
       fread(buffer[i], 1, 4, inp);
       if (buffer[i][1] != 0) {
@@ -638,27 +648,31 @@ int main(int argc, char const *argv[]) {
       } else {
         if (sustain_ctrs[i] != 0) sustain_ctrs[i]++;
       }
-      if (buffer[i][0] == 0xFF && buffer[i][1] == 0xFF && buffer[i][2] == 0xFF && buffer[i][3] == 0xFF) goto END;
-
+      if (buffer[i][0] == 0xFF && buffer[i][1] == 0xFF && buffer[i][2] == 0xFF && buffer[i][3] == 0xFF) {
+        printf("END SIGNAL\n");
+        goto END;
+      }
     }
+    if (frame % synthesis_percent == 0) printf("\rSynthesis progress: %u%%", (frame * 100) / frame_max);
+    fflush(stdout);
     frame++;
   }
-  END: printf("Synthesis finished\n");
+  END: printf("\rSynthesis progress: 100%%\n");
   Wave master_wave = makeWave(SAMPLE_RATE, 1, 16);
   waveSetDuration(&master_wave, duration);
+  int write_percent = num_samples / 100;
   for (long long master_ptr = 0; master_ptr < num_samples; master_ptr++) {
-    int16_t monoArray[1];
-    monoArray[0] = master[master_ptr];
-    waveAddSample16(&master_wave, monoArray);
+    if (master_ptr % write_percent == 0) printf("\rWriting progress: %u%%", (master_ptr * 100) / num_samples);
+    fflush(stdout);
+    waveAddSample16(&master_wave, master[master_ptr]);
   }
+  printf("\rWriting progress: 100%%\n");
   waveToFile(&master_wave, argv[2]);
   freeWave(&master_wave);
   printf("Wave written to %s!\n", argv[2]);
 
   fclose(inp);
   free(master);
-
-  printf("Playing your music...\n");
 
   return EXIT_SUCCESS;
 }
