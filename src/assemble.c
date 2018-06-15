@@ -566,7 +566,6 @@ uint32_t processExpression(char *expression)
   return result;
 }
 
-/*** FILL OUT YOUR OWN INSTRUCTIONS ください　どうもありがとうございました。***/
 /*** Data Processing Instructions ***/
 uint32_t compute(OpCode opcode, char *rd, char *rn, char *operand2, int set)
 {
@@ -768,4 +767,4 @@ uint32_t branch(char *label, int locctr, SymbolTable symtab)
   return instruction;
 }
 
-// if you want to be a butterfly, you have to be butterfly soup first <3 <3 <3
+// if you want to be a butterfly, you have to be butterfly soup first

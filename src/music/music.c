@@ -479,7 +479,7 @@ int main(void) {
     if ((i % *fpb) == 0) writeChordToFile(tonic - 24, getRandomChordDegree(&chpr), rand() % 3, f);
     else writeZeroChord(f);
 
-    /* Sam's code
+    /* Original code
     muse = &temp;
     fwrite(muse, 1, 1, f);
     fwrite(&velocity, 1, 1, f);
@@ -488,7 +488,7 @@ int main(void) {
     temp = shift(temp) % 74 + 23;
     */
 
-    // My more musical code
+    // Musical code
     for (int i = 3; i < *no_instr; i++) {
       melodies[i] = getRandomNote(tonic, melodies[i], &jp);
       fwrite(melodies + i, 1, 1, f);
