@@ -5,11 +5,14 @@ CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
 
 .PHONY: all clean
 
-all: music instrument
+all: music tracker
 
 music: music.o
+
+tracker: tracker.o -lm -lcurses
 
 clean:
 	rm -f $(wildcard *.o)
 	rm -f $(wildcard *.wav)
 	rm -f music
+	rm -f tracker

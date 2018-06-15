@@ -109,13 +109,9 @@ void printInstruments(InstrParams *instruments, int instrument_count)
     printf("Instrument %u OSC 1:\n", i);
     printf("ATK = %u, DEC = %u, SUS = %u%%, REL = %u\n", atk1, dec1, sus1, rel1);
     printf("Shape = %u, Mix Level = %u%%, Octave offset = %d, Detune = %d\n", shape1, mix1, octave1, detune1);
-    printf("\n");
-
     printf("Instrument %u OSC 2:\n", i);
     printf("ATK = %u, DEC = %u, SUS = %u%%, REL = %u\n", atk2, dec2, sus2, rel2);
     printf("Shape = %u, Mix Level = %u%%, Octave offset = %d, Detune = %d\n", shape2, mix2, octave2, detune2);
-    printf("\n");
-
     printf("Instrument %u OSC 3:\n", i);
     printf("ATK = %u, DEC = %u, SUS = %u%%, REL = %u\n", atk3, dec3, sus3, rel3);
     printf("Shape = %u, Mix Level = %u%%, Octave offset = %d, Detune = %d\n", shape3, mix3, octave3, detune3);
@@ -509,66 +505,86 @@ void waveToFile(Wave* wave, const char* filename)
   toLittleEndian(sizeof(int), (void*)&(wave->header.subChunk2Size));
 }
 
-int main(int argc, char const *argv[]) {
+int main(void) {
+  initscr();
+  raw();
+  keypad(stdscr, TRUE);
+  attron(A_BOLD);
+  printw("DAMN TRACKER ");
+  attroff(A_BOLD);
+  printw("made with blood, sweat and tears\n");
+  printw("Powered by NO-L synthesizer\n");
+  char input_file[80];
+  char output_file[80];
+  printw("Enter your input file: ");
+  getstr(input_file);
 
-  // Tests for correct amount of input variables
-  if (argc != 3) {
-    fprintf(stderr, "Usage = %s input output\n", argv[0]);
-    return EXIT_FAILURE;
-  }
-
-  FILE *inp = fopen(argv[1], "rb");
+  FILE *inp = fopen(input_file, "rb");
 
   if (inp == NULL) {
-    printf("File Load Failure\n");
+    printw("File load failure! ");
+    getch();
+    endwin();
     return EXIT_FAILURE;
   }
+
+  printw("Enter your output file: ");
+  getstr(output_file);
 
   fseek(inp, 0, SEEK_END);
   long fsize = ftell(inp); // Get the size of the file
   fseek(inp, 0, SEEK_SET); // Reset the seeker
 
-  char damn[4];
+  char damn[5];
   fread(damn, 1, 4, inp);
+  damn[4] = '\0';
   if (strcmp(damn, "DAMN")) {
-    fprintf(stderr, "%s\n", "Not a .damn file!!!");
+    printw("%s", damn);
+    printw("File is not DAMN format! ");
+    getch();
+    endwin();
     return EXIT_FAILURE;
   }
-
-  printf("DAMN TRACKER :: 2018\n");
 
   uint32_t instrument_count;
   fread(&instrument_count, 4, 1, inp);
   if (instrument_count == 0) {
-    fprintf(stderr, "%s\n", "Invalid amount of instruments!!!");
+    printw("Invalid amount of instruments!");
+    getch();
+    endwin();
     return EXIT_FAILURE;
   }
 
   uint8_t tempo;
   fread(&tempo, 1, 1, inp);
   if (tempo == 0) {
-    fprintf(stderr, "%s\n", "Invalid tempo!!!");
+    printw("Invalid tempo!");
+    getch();
+    endwin();
     return EXIT_FAILURE;
   }
 
   uint8_t fpb;
   fread(&fpb, 1, 1, inp);
   if (fpb == 0) {
-    fprintf(stderr, "%s\n", "Invalid frames per bar!!!");
+    printw("Invalid frames per bar!");
+    getch();
+    endwin();
     return EXIT_FAILURE;
   }
 
-  printf("\nPlease review NO-L Synthesizer Settings: \n");
+  printw("\nPlease review project settings: \n");
 
-  printf("Number of voices = %u\n", instrument_count);
+  printw("Number of voices: %u\n", instrument_count);
   fseek(inp, 6, SEEK_CUR);
-  printf("Tempo = %u, Frames/beat = %u\n", tempo, fpb);
+  printw("Tempo = %u, Frames/beat = %u\n", tempo, fpb);
   int frame_duration = (int) (((double) 1000.0 / ((double) tempo / 60)) / fpb);
-  printf("Frame duration = %ums\n", frame_duration);
   unsigned long long duration = ((fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count)) * frame_duration + 100; // pad by 100ms
   unsigned long long num_samples = (duration * SAMPLE_RATE) / 1000;
-  printf("Total duration = %llums, %llu samples\n", duration, num_samples);
-  printf("\n");
+  printw("Total duration = %llums, %llu samples\n", duration, num_samples);
+  printw("\n");
+
+  refresh();
 
   InstrParams instruments[instrument_count];
   for (int i = 0; i < instrument_count; i++) {
@@ -613,7 +629,6 @@ int main(int argc, char const *argv[]) {
   long sustain_vels[instrument_count];
   for (int i = 0; i < instrument_count; i++) sustain_vels[i] = 0; // Sustained note velocities
   uint8_t buffer[instrument_count][4];
-  printInstruments(instruments, instrument_count);
   unsigned long long frame = 0;
   int16_t *master = calloc(num_samples, sizeof(int16_t)); // Initialize the master track
   unsigned long long frame_max = (fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count);
@@ -649,12 +664,14 @@ int main(int argc, char const *argv[]) {
         if (sustain_ctrs[i] != 0) sustain_ctrs[i]++;
       }
       if (buffer[i][0] == 0xFF && buffer[i][1] == 0xFF && buffer[i][2] == 0xFF && buffer[i][3] == 0xFF) {
-        printf("END SIGNAL\n");
+        printw("END SIGNAL\n");
         goto END;
       }
     }
-    if (frame % synthesis_percent == 0) printf("\rSynthesis progress: %u%%", (frame * 100) / frame_max);
-    fflush(stdout);
+    if (frame % synthesis_percent == 0) {
+      printw("\rSynthesis progress: %llu%%", (frame * 100) / frame_max);
+      refresh();
+    }
     frame++;
   }
   END: printf("\rSynthesis progress: 100%%\n");
@@ -662,17 +679,25 @@ int main(int argc, char const *argv[]) {
   waveSetDuration(&master_wave, duration);
   int write_percent = num_samples / 100;
   for (long long master_ptr = 0; master_ptr < num_samples; master_ptr++) {
-    if (master_ptr % write_percent == 0) printf("\rWriting progress: %u%%", (master_ptr * 100) / num_samples);
-    fflush(stdout);
+    if (master_ptr % write_percent == 0) {
+      printw("\rWriting progress: %llu%%", (master_ptr * 100) / num_samples);
+      refresh();
+    }
     waveAddSample16(&master_wave, master[master_ptr]);
   }
-  printf("\rWriting progress: 100%%\n");
-  waveToFile(&master_wave, argv[2]);
+  printw("\rWriting progress: 99%%");
+  refresh();
+  waveToFile(&master_wave, output_file);
   freeWave(&master_wave);
-  printf("Wave written to %s!\n", argv[2]);
+  printw("\rWriting progress: 100%%\n");
+  refresh();
+  printw("Press any key to exit");
+  getch();
 
   fclose(inp);
   free(master);
+
+  endwin();
 
   return EXIT_SUCCESS;
 }

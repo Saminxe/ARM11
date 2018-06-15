@@ -5,6 +5,7 @@
 #include <time.h>
 #include <string.h>
 #include <assert.h>
+#include <curses.h>
 
 #define A 440 // A pitch standard
 #define FREQUENCY_RATIO 1.05946309436 // twelfth root of 2 for equal temperament
