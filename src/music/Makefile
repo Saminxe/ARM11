@@ -12,7 +12,7 @@ music: music.o
 tracker: tracker.o -lm -lcurses
 
 clean:
-	rm -f $(wildcard *.o)
-	rm -f $(wildcard *.wav)
+	rm -f .o
+	rm -f *.wav
 	rm -f music
 	rm -f tracker
