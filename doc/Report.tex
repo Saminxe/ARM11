@@ -18,28 +18,28 @@ At the time we wrote our interim checkpoint report we planned to create a simple
 \section{NO-L Synthesizer}
 The NO-L (No Logic) Subtractive Synthesizer is a sound synthesizer based on traditional subtractive synthesizers. A NO-L instrument consists of 3 oscillators, which are superposed to produce a complex, harmony-rich sound.
 \subsection{Oscillator}
-The oscillator is entirely software based. It is capable of producing frequency-rich waves such as square, saw and triangle waves, in addition to a pure sine wave and random noise. Furthermore, an ADSR envelope is applied to the generated wave to enhance the dynamic expressiveness of the oscillator. The input parameters for an oscillator are an ADSR envelope, a specified wave-shape, the playing frequency and the duration of the note to be played. A constant in use is the sample rate of the program, which is by default set to 44.1kHz (Studio Quality). Bit depth is 16-bit, meaning that the minimum and maximum amplitudes of the waves are -32,768 to 32,767, with 65,536 levels of quantization. 
+The oscillator is entirely software based and has no hardware component. It is capable of producing frequency-rich waves such as square, saw and triangle waves, in addition to a pure sine wave and random noise. Furthermore, an ADSR (Attack Decay Sustain Release) envelope is applied to the generated waves to enhance the dynamic expressiveness of the oscillator. The input parameters for an oscillator are an ADSR envelope, a specified wave-shape, the playing frequency and the duration of the notes to be played. A constant in use is the sample rate of the program, which, by default, is set to 44.1kHz (Studio Quality). Bit depth is 16-bit, meaning that the amplitudes of the waves range between -32,768 and 32,767, with 65,536 levels of quantization. 
 \\\\
-An ADSR envelope stands for an Attack-Decay-Sustain-Release envelope. These values describe the limited amplitude of a wave at certain points in the wave. The sustain level describes the percentage of maximum amplitude the sustain phase is held at. The attack, decay and release values are described in milliseconds, and describe the time taken to change amplitude. The attack phase is a change from 0\% to 100\%, the decay from 100\% to the sustain level, and the release from the sustain level to 0\%.
+An ADSR envelope consists of values that describe the limited amplitudes at certain points in the wave. The sustain level describes the percentage of maximum amplitude the sustain phase is held at. The attack, decay and release values are in milliseconds. They describe the time taken to change amplitude. The attack phase is a change from 0\% to 100\%, the decay from 100\% to the sustain level, and the release from the sustain level to 0\%.
 \subsection{Instrument}
 A NO-L instrument consists of 3 oscillators. Each oscillator has its individual parameters, in addition to a volume mix level, an octave offset and a detune offset. The instrument has parameters for each oscillator, the note to be played, the duration to play it for and the velocity of the note.
 \\\\
-The note is given in scientific pitch notation, with C4 (middle C) being designated 60. The frequency of the note is calculated using the equation: 
+The note is given in scientific pitch notation, with C4 (middle C) being designated 60. The frequency of a note is calculated using the equation: 
 \[f_n=f_0\times 2^{n/12}\]
-The variable \(n\) is the distance of the note in semitones from concert A (A4), and the constant \(f_0\) is the frequency of A4, which is set as 440Hz. An octave offset changes the number of semitones by 12 (changes octaves), and the detune offset changes it in increments of 0.01 semitones (cents).\\\\
+where \(n\) is the distance of the note in semitones from concert A (A4), and the constant \(f_0\) is the frequency of A4, which is set as 440Hz. An octave offset changes the number of semitones by 12 (changes octaves), and the detune offset changes it in increments of 0.01 semitones (cents).\\\\
 The velocity of a note is essentially its relative volume in the track.
 
 \section{DAMN Music Tracking Software}
 DAMN stands for Digitally Approximated Music using NO-L. It is inspired by the concept of a music tracker, where notes are laid out on separate channels on discrete frames on a music time-line. The DAMN tracker supports multiple instruments (polyphony), and discrete note lengths and velocities for each note. The sound produced by DAMN is a 16-bit PCM wave file, with a 44.1kHz sample rate and a single channel.
 \subsection{DAMN File Format}
-The .damn file format is a proprietary file format that is read by the DAMN tracking software. It has a 16-byte header, containing information about the tempo of the piece, the number of instruments and the frames per beat. Starting from address \texttt{0x10} are the instrument settings. Each instrument is a 48-byte block, with each oscillator taking up 16 bytes. This carries all the parameters required for the instrument to produce sound.\\\\
-The remainder of the file is tracking information for the DAMN tracker to synthesize. A frame is a block of memory \texttt{4 * number of instruments} bytes large. A note for a single instrument is 4 bytes large, and holds information about pitch, velocity, and duration. Pitch is represented as in NO-L, velocity is an unsigned integer from 0-255, and sustain is an unsigned integer from 0-65,536, representing duration in milliseconds. If the duration is set as 0, the software will interpret this as a held note, to be released when another non-zero note is read, or until a stop signal. The stop signal is when the pitch is 255 (\texttt{0xFF}), and when it is called no note will be played and the previous note will stop. If the velocity of a note is 0, the note is ignored.\\\\
+The .damn file format is a proprietary file format that is read by the DAMN tracking software. It has a 16-byte header (Table 1), containing information about the tempo of the piece, the number of instruments and the frames per beat. Starting from address \texttt{0x10} are the instrument settings. Each instrument is a 48-byte block, with each oscillator taking up 16 bytes. This carries all the parameters required for the instrument to produce sound.\\\\
+The remainder of the file is tracking information for the DAMN tracker to synthesize. A frame is a block of memory \texttt{4 * number of instruments} bytes large. A note for a single instrument is 4 bytes long, and holds information about pitch, velocity, and duration (Table 4). Pitch is represented as in NO-L, velocity is an unsigned integer from 0-255, and sustain is an unsigned integer from 0-65,536, representing duration in milliseconds. If the duration is set to 0, the software will interpret this as a held note, to be released when another non-zero note is read, or until a stop signal. The stop signal is when the pitch is 255 (\texttt{0xFF}), and when it is called no further notes will be played and the previous note will stop. If the velocity of a note is 0, the note will be ignored.\\\\
 The file is ended with a 4-byte series of 1's (\texttt{0xFFFFFFFF}). After this signal is received, the rest of the file will be ignored. More information on the .damn file format can be found in the appendix.
 
-\subsection{Synthesis}
-The DAMN tracker first initializes an array of \texttt{uint16\_t} using \texttt{calloc}. The maximum size of the array is limited by the maximum value of \texttt{unsigned long long}, which is at least \(1.84\times 10^{19}\). Using a sample rate of 44.1kHz, this means a maximum length of \(4.18\times 10^{14}\) seconds, or 13.3 million years.
+\subsection{Synthesiser}
+The DAMN tracker first initialises an array of \texttt{uint16\_t} using \texttt{calloc}. The maximum size of the array is limited by the maximum value of \texttt{unsigned long long}, which is at least \(1.84\times 10^{19}\). Using a sample rate of 44.1kHz, this means a maximum length of \(4.18\times 10^{14}\) seconds, or 13.3 million years.
 \\\\
-While the tracker reads data from the file, it keeps a frame pointer, and a set of arrays used for generating sustained notes. When a note of duration 0 is encountered, its values are put into the sustain arrays. Every subsequent read which returns zeroes increments the sustain duration counter by one. When a note is encountered, the tracker calls the synthesizer, with the recorded duration, and superposes the wave generated at the position where the note was encounterd. If a note has a non-zero duration, it is immediately generated and superposed at the current frame position. The frame increments everytime it has read \(n\) notes, where \(n\) is the number of instruments.
+While the tracker reads data from the file it keeps a frame pointer and a set of arrays used for generating sustained notes. When a note of duration 0 is encountered, its values are put into the sustain arrays. Every subsequent read which returns zeros increments the sustain duration counter by one. When a note is encountered, the tracker calls the synthesiser with the recorded duration and superposes the wave generated at the position where the note was encountered. If a note has a non-zero duration, it is immediately generated and superposed at the current frame position. The frame increments every time it has read \(n\) notes, where \(n\) is the number of instruments.
 
 \subsection{Writing to WAV}
 We opted to write to a Microsoft WAV file as the Linear PCM format means it requires the least amount of processing. All that is required is a WAVE header containing the characters "RIFF WAVE", Subchunk1 containing the audio format, the number of channels, sample rate and bit-depth, and Subchunk2 containing all the wave data.
@@ -47,50 +47,97 @@ We opted to write to a Microsoft WAV file as the Linear PCM format means it requ
 The WAV is represented internally as a struct containing all the components of a WAV. The generated wave data is written to the struct, and then the entire struct is written sequentially to a file.
 
 \subsection{Randomiser}
-We ended up taking two different approaches with our randomiser. We started out creating a very basic software which contained 15 whole notes and the music generated was not allowed to go out of these bounds. 
-\\
-Using our musical knowledge we created probabilities based on how likely it would be for the next note to play based on the previous note. This was done with arpeggios in mind so that the transitions were deemed "musical" at a most fundamental level. Then using scientific pitch notation we converted our numbers created into sound values in binary.
-\\
-However, this caused issues with semitones and transition between notes such as E and F due to the spacing between whole notes and arpeggio notes varying. We were able to create a piece of custom length with up to 3 instruments with variable types of waves (sin, triangular and square) but it was never the most musical of pieces.
+We ended up taking two different approaches with our randomiser. We started out creating a very basic software which contained 15 whole notes. Generated notes were not allowed to go out of these bounds. 
 \\\\
-We then precoded to use our musical knowledge to create a much more complex and harmonious piece of music. This version took into account the sharps and flats of music and added a wider range in which the notes could compile
+Based on our prior musical experience we assigned probabilities to each note. The idea was that the probabilities of a note represented how likely it was that the note would be played following a previous note. This was done with arpeggios in mind so that generated sequences of notes were deemed "musical" at a most fundamental level, and not simply random. Then using scientific pitch notation we converted our numbers created into sound values in binary. We would feed a seed note to the function that generated the sequence, thus giving it a starting point.
+\\\\
+However, this caused issues with semitones and transition between notes such as E and F due to the spacing between whole notes and arpeggio notes varying. We were able to create a piece of custom length with up to 3 instruments with variable types of waves (sine, triangular and square) but it was never the most musical of pieces.
+\\\\
+We then proceeded to use our musical knowledge to create a system that generated much more complex and harmonious pieces of music. This version took into account the sharps and flats of musical notes and extended the range of notes that could be played. We also changed our system from 2 octaves of whole notes to 1 octave of a chromatic scale ranging from the A below middle C to the G\# above middle C.
+More complex structures like a tonic note, thirds and fifths were used to provide greater musical variety.
+\\\\
+The main change made was to the fact that the first note we give produces a chord of three notes that change together so as to always provide a base harmony. All notes above this are then left to be random and not based on this chord at all. However, it is still designed in a musical fashion and so we have found that having fewer instruments resulted in a better sounding tune. This is because if the number of random instruments is increased it is statistically more likely to result in an unpleasant sound.
+
+\section{Applications}
+We came up with a few potential ideas for how our extension could be applied in the real world.
+\subsection{Alarm Clock}
+Apparently people who use an alarm with the same sound or tune are more likely to get used to the sound and as such not wake up, or at least not wake up as often when the alarm goes off. Our random music generator could randomly generate an alarm every morning and it is therefore impossible for the user to get used to the sound and not wake up. The generated tune could be based on the user's input settings such as speed, starting note, harshness etc. 
+\subsection{Video Games}
+Our music generator could create excellent retro video game music as the variety in sounds produced could be used across all genres of video games, be it horror, action, shooter, sports etc. The fact that it is random would save time for developers as there would be no need to compose a wide variety of tunes for background music. Instead, all that developers would need to do is give the music generator a number of input settings, and the generator would do the rest. Additionally this would mean that each player would have a unique experience playing the game as each soundtrack would be different.
 
 \section{Group Reflection}
-
-Do Not Over-clock Pi to 1GHz, corrupted gcc.
-\\\\
-Delete + reclone = working repo
+During our experimentation, we tried to increase the speed that the Raspberry Pi generates the music. To achieve this, we over-clocked the Raspberry Pi from 700MHz to 1.0GHz. This resulted in some undocumented behaviour, including the corruption of GCC libraries. As a result of this, we could not recompile our C code on the Raspberry Pi as the libraries failed to load. \\\\
+Our communication was outstanding. We used the communication platform Discord in order to coordinate our efforts. We were able to share what we have done and committed on Git as well as ask each other questions. Discord also supports formatted code, which made code-sharing a seamless experience.\\\\
+Throughout our project, we used Git extensively. Initially, we were not comfortable with using Git, as we encountered problems with merging, branching, pushing, pulling, committing, stashing, rebasing, checking out, and essentially every Git feature. However, as time progressed, our Git proficiency increased and we made less errors. This allowed us to clean up our repository considerably. \\\\
+The work was split evenly, weighted by the members' ability to code and their working pace. This meant that we finished our main programs well ahead of time, and had lots of time to do the extension.\\\\
+One thing we could have done differently is to work together in labs more frequently.
 
 \section{Individual Reflections}
 \subsection{Chang Shen Ho}
 Writing the assembler, oscillator, NO-L and DAMN taught me a lot about C, like how to manipulate memory pointers and using file I/O. Writing the DAMN interface using the curses library also taught me basic GUI building skills.\\\\
-One of the main problems I encontered was \texttt{Segmentation Fault} occuring everywhere, and the occasional \texttt{Stack Smashing Detected}. This has taught me how to properly allocate memory and strings, and through debugging using Valgrind, how to properly free allocated memory.\\\\
-One thing I would like to continue working on is the GUI for 
+One of the main problems I encountered was \texttt{Segmentation Fault} occurring everywhere, and the occasional \texttt{Stack Smashing Detected}. This has taught me how to properly allocate memory and strings, and through debugging using Valgrind, how to properly free allocated memory.\\\\
+One thing I would like to continue working on is the GUI for the DAMN software, as writing music in binary is decidedly not enjoyable.
 
 \subsection{Hao Liang}
-I am not the most proficient with C in the group but I did a fair amount of the emulator and helped in debugging and cleaning up the code. I made the mistake of not re-basing back to master after I merged my branch during emulator, which caused the subsequent merge to be very complicated since we heavily reformatted our code after that. I communicated well with my team and we worked together well in labs. On the next group project I would utilise branches properly to separate the work-flow with other group members.
-\subsection{Samuel Trew}
-My confidence in C was never the highest but I implemented the Branch instruction in Emulator and worked on the 
+I am not the most proficient with C in the group but I did a fair amount of the emulator and helped in debugging and cleaning up the code. I made the mistake of not re-basing back to master after I merged my branch during emulator, which caused the subsequent merge to be very complicated since we heavily reformatted our code after that. I communicated well with my team and we worked well together in labs. On the next group project I would utilise branches properly to separate the work-flow with other group members.
 
+\subsection{Samuel Trew}
+My confidence in C was never the highest but I implemented the Branch instruction in Emulator, worked on the second pass for the Assembler and implemented the main chunk of the base randomiser we created. Some misunderstanding caused my assembler code to unfortunately become useless as it didn't end up fitting in line with our overall plan. Through writing original code for the randomiser I learned more about memory allocation issues that arise due to mallocs not necessarily being needed. This helped me get used to using GBD and Valgrind to a much greater extent. I believe I communicated well and worked efficiently in labs. In the future I think it would have helped to gain a greater grasp of understanding of the whole project so that I can tackle my individual work without the assistive knowledge of other team mates.
 
 \subsection{Akshay Narayan}
-Unfortunately it took me much longer to understand the problems that we had to solve than other members of the group, and as such I did not actually make a start on the code as quickly. I was responsible for implementing the single data transfer instruction in the emulator, and the main reason I struggled with this was that I was unsure on the order in which bits in the instruction were to be evaluated. I think that my understanding of architecture generally was not up to scratch, which did not help. In terms of the extension, I helped set up the representation of a musical note in C. I communicated well with the rest of the team and worked well together in labs. On the next group project I would undertake extensive wider reading to ensure that I understand the essence of the problems we are facing.\\\\
+Unfortunately it took me much longer to understand the problems that we had to solve than other members of the group, and as such I did not actually make a start on the code as quickly. I was responsible for implementing the single data transfer instruction in the emulator, and the main reason I struggled with this was that I was unsure on the order in which bits in the instruction were to be evaluated. I think that my understanding of architecture generally was not up to scratch, which did not help. In terms of the extension, I helped set up the representation of a musical note in C. I communicated well with the rest of the team and worked well together in labs. On the next group project I would undertake extensive wider reading to ensure that I clearly understand the essence of the problems we are facing.
+
+\section{Note on Assembler}
+The structure for the second pass for the assembler was modified. A tokenizer splits the instruction into the opcode and the operands, and is handed down to sub-functions for further processing, all of which return 32-bits, except for Single Data Transfer, which returns a 64-bit integer if anything needs to be added to the end of the memory. These bits are written to a binary file. Other than this change, the assembler is as detailed in the Interim Report.
 
 \pagebreak
 
-\section*{Appendix}
-\subsection*{DAMN File Format}
-The DAMN Header is detailed in Table 1.
 \begin{table}[]
 \centering
 \caption{The DAMN header format}
 \label{my-label}
 \begin{tabular}{|c|c|c|c|c|c|c|c|c|}
 \hline
-\textbf{Offset} & \textit{0x0} & \textit{0x1} & \textit{0x2} & \textit{0x3} & \textit{0x4} & \textit{0x5} & \textit{0x6} & \textit{0x7} \\ \hline
+\textbf{Offset} & \textit{byte 0} & \textit{byte 1} & \textit{byte 2} & \textit{byte 3} & \textit{byte 4} & \textit{byte 5} & \textit{byte 6} & \textit{byte 7} \\ \hline
 \textit{0x00}   & 'D'          & 'A'          & 'M'          & 'N'          & \multicolumn{4}{c|}{Number of Instruments}                \\ \hline
 \textit{0x08}   & Tempo        & Frames/Beat  & \multicolumn{6}{c|}{\textit{Unused}}                                                    \\ \hline
 \textit{0x10}   & \multicolumn{8}{c|}{\textit{Instrument Settings Begin Here}}                                                          \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[]
+\centering
+\caption{The DAMN Instrument Format}
+\label{my-label}
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Offset} & \textit{16-byte Chunk} \\ \hline
+\textit{0x00}   & Instrument 1           \\ \hline
+\textit{0x10}   & Instrument 2           \\ \hline
+\textit{0x20}   & \textit{Instrument 3}  \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[]
+\centering
+\caption{The DAMN oscillator format}
+\label{my-label}
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|}
+\hline
+\textbf{Offset} & \textit{byte 0} & \textit{byte 1} & \textit{byte 2} & \textit{byte 3} & \textit{byte 4}  & \textit{byte 5} & \textit{byte 6}  & \textit{byte 7} \\ \hline
+\textit{0x00}   & \multicolumn{2}{c|}{Attack} & \multicolumn{2}{c|}{Decay}  & \multicolumn{2}{c|}{Sustain} & \multicolumn{2}{c|}{Release} \\ \hline
+\textit{0x08}   & Shape        & Mix          & \multicolumn{2}{c|}{Octave} & \multicolumn{4}{c|}{Detune}                                 \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[]
+\centering
+\caption{The DAMN note format}
+\label{my-label}
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+\textbf{Byte:} & \textit{0} & \textit{1} & \textit{2}  & \textit{3} \\ \hline
+\textit{Value:}  & Pitch        & Velocity     & \multicolumn{2}{c|}{Sustain} \\ \hline
 \end{tabular}
 \end{table}
 
