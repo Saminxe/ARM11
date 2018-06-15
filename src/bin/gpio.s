@@ -1,11 +1,11 @@
 ldr r0, =0x20200004
 ldr r1, =0x1
-lsl r1, #21
+lsl r1, #18
 str r1, [r0] ; We have now set pin 16 to an output pin!
 ldr r4, =0x1
-lsl r4, #17 ; To active
+lsl r4, #16 ; To active
 ldr r5, =0x0
-lsl r5, #17 ; To end
+lsl r5, #16 ; To end
 ldr r2, =0x20200028 ; Address of clearing pins
 ldr r3, =0x2020001C ; Address of turning on pins
 str r4, [r2] ; First we clear pins

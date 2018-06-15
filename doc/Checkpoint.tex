@@ -4,27 +4,36 @@
 
 \begin{document}
 
-\title{ARM Checkpoint... }
-\author{TODO}
+\title{ARM  Emulator Interim Checkpoint}
+\author{Group 7: Chang Shen Ho, Hao Liang, Samuel Trew, Akshay Narayan}
 
-\maketitle
+\maketitle	
 
 \section{Group Organisation}
 
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor
-incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
-nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-culpa qui officia deserunt mollit anim id est laborum.
+Initially, Chang Shen set up the emulation of the memory, registers and pipeline. We split up the implementation of the 4 instruction types equally; Hao implemented Data Processing Instructions, Chang Shen implemented Multiply Instructions, Akshay implemented Single Data Transfer Instructions and Sam implemented Branch Instructions. Some instructions required helper functions to be written, which in turn were reused in the implementation of other instructions.
+\\ \\
+We communicated online via the Discord application and worked regularly together in labs. We used Gitlab and branches to coordinate the workflow with commit messages explaining specifically what changes were made. We think the group is working well together with everyone pulling their weight. Nobody is slacking, so we do not think any changes need to be made.
 
 \section{Implementation Strategies}
+\subsection{Emulator}
+In the emulator, the machine state is constructed using a struct which contains the memory and registers initialised to 0s. The required sizes were allocated using calloc and the sizeof function. The state is initialised at the start of the main function. Early on we implemented a number of important helper functions to help with debugging. We then proceeded to implement each of the instruction types in functions that all returned void and took a state and an unsigned 32-bit integer (representing an instruction) as arguments. A number of helper functions for the instruction types were implemented as and when required. A common operation in processing instruction types was isolating individual bits or a smaller bit sequence within the larger instruction; this was mostly achieved using shifting and masks. Some helper functions were used in the implementation of multiple instruction types.
+\\ \\
+The pipeline is contained in a separate function. In order to distinguish between instruction types, we implemented a generic pattern matching function that uses masks to uniquely identify each instruction. The pipeline function conducts multiple checks to verify the state of each stage of the pipeline. When the main function is called, it first conducts a number of checks on the arguments passed to it before it calls the pipeline function. The result of the pipeline is printed, and the memory used by the state memory and registers are freed.
+\\ \\
+We left detailed comments throughout our code, describing what helper functions do and describing conditions and their subsequent meanings in if-else statements.
 
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor
-incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
-nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-culpa qui officia deserunt mollit anim id est laborum.
+\subsection{Assembler}
+We took a slightly different approach when it came to the assembler. We went with a two-pass method that doesn't reuse code from our emulator; instead, it uses two while loops for each pass. It involves the use of three main data structures: an Operation Code Table, a Location Counter and a Symbol Table.
+\\ \\
+In our first pass, we assign addresses to the statements in our program. We then save the addresses assigned to all of the labels for our use in the second pass so as to handle the forward references. We finally perform a bit of processing of the assembler directives (ones that can affect address assignment).
+\\ \\
+In our second pass, we generate an opcode and look up the addresses that were stored in the first pass. We then generate data values before performing the processing of the directives not done in our first pass. We finish with writing the object program and the listing of the assembly.
 
+\section{Future Issues}
+
+For our extension, we will be attempting to create something along the lines of a signal wave generator. As we have no experience with this in the past it could end up being difficult to plan. We may have to implement a system where a binary file is fed into the program, converted into a sound file and subsequently played through a loudspeaker.
+\\ \\
+To help with this we might end up looking into existing technologies that are similar and see how we can adapt them to our needs.
 \end{document}
+
