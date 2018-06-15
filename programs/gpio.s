@@ -1,15 +1,26 @@
-start:
-  ldr r0,=0x20200004 ; physical address of pins 10-19
-  mov r1,#4 ; move 0b0100 into r1.
-  str r1,[r0,#2] ; stores 0b0100 into 0x020200007, sets as output
-  ldr r2,=0x20200028 ; clear register
-  ldr r3,=0x2020001C ; set register
-  ldr r4,=0x2FF
-  mov r5,#1 ; move 0b0001 into r5
-  mov r6,#0
+ldr r0, =0x20200004
+ldr r1, =0x1
+lsl r1, #18
+str r1, [r0] ; We have now set pin 16 to an output pin!
+ldr r4, =0x1
+lsl r4, #16 ; To active
+ldr r5, =0x0
+lsl r5, #16 ; To end
+ldr r2, =0x20200028 ; Address of clearing pins
+ldr r3, =0x2020001C ; Address of turning on pins
+str r4, [r2] ; First we clear pins
 loop:
-  str r5,[r3,#2]
-  str r5,[r4,#2]
+  str r4, [r3] ; Turn on pin
+  ldr r12,=0xFFFFF
+  wait:
+    sub r12,r12,#1
+    cmp r12,#0
+    bne wait
+  str r4, [r2]
+  ldr r12,=0xFFFFF
+  waittwo:
+    sub r12,r12,#1
+    cmp r12,#0
+    bne waittwo
   b loop
-;end:
-;  andeq r0,r0,r0
+andeq r0,r0,r0
