@@ -386,6 +386,7 @@ Chromatics getNoteVal(char *note)
   if (!strcmp("F#", note) || !strcmp("Gb", note)) return Fs;
   if (!strcmp("F", note)) return G;
   if (!strcmp("G#", note) || !strcmp("Ab", note)) return Gs;
+  else return A;
 }
 
 
@@ -425,7 +426,7 @@ int main(void) {
   printf("Frames per beat: ");
   scanf("%hhu", fpb);
   printf("Loop length: ");
-  scanf("%u", loop);
+  scanf("%d", loop);
 
 
   uint16_t non = 0x0;
@@ -434,8 +435,6 @@ int main(void) {
   uint16_t sustain = 0x32;
   uint16_t release = 0x5;
   uint8_t waveshape = 0x0;
-  uint8_t waveshape2 = 0x0;
-  uint8_t waveshape3 = 0x0;
   uint8_t oscillator_volume = 0x64;
   uint16_t offset = 0x0;
   uint32_t detune = 0x0;
