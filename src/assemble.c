@@ -258,6 +258,8 @@ int main(int argc, char **argv) {
   // Tests for correct amount of input variables
   if (argc != 3) {
     fprintf(stderr, "Usage = %s input output\n", argv[0]);
+    free(buffer);
+    free(symtab.symbols);
     return EXIT_FAILURE;
   }
 
@@ -268,6 +270,8 @@ int main(int argc, char **argv) {
   // Checks the read file exists
   if (src == NULL) {
     fprintf(stderr, "File Load Failure\n");
+    free(buffer);
+    free(symtab.symbols);
     return EXIT_FAILURE;
   }
 
@@ -409,6 +413,8 @@ int main(int argc, char **argv) {
   fclose(src);
   fclose(dest);
   free(buffer);
+  free(symtab.symbols);
+  return EXIT_SUCCESS;
 }
 
 
