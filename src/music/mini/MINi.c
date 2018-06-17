@@ -61,7 +61,7 @@ int get_note_val(char *spn)
 {
   if (!strcmp(spn, "STOP")) return 0xFF;
 
-  char _pitch[2];
+  char _pitch[80];
   char _octave[80];
   char *ptr;
   int pitch;
@@ -69,6 +69,7 @@ int get_note_val(char *spn)
 
   if (spn[1] == 'b' || spn[1] == '#') {
    strncpy(_pitch, spn, 2);
+   _pitch[2] = '\0';
    strcpy(_octave, spn + 2);
   } else {
    strncpy(_pitch, spn, 1);
@@ -104,7 +105,7 @@ int get_note_val(char *spn)
    pitch = 11;
   } else return -1;
 
-  return (12 * octave + 1) + pitch;
+  return (12 * (octave + 1)) + pitch;
 }
 
 Frame *init_frame(int no_instr)

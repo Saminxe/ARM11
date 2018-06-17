@@ -638,10 +638,6 @@ int main(int argc, char *argv[]) {
         goto END;
       }
     }
-    if (frame % synthesis_percent == 0) {
-      printf("\rSynthesis progress: %llu%%", (frame * 100) / frame_max);
-      fflush(stdout);
-    }
     frame++;
   }
   END: printf("\rSynthesis progress: 100%%\n");
@@ -649,14 +645,8 @@ int main(int argc, char *argv[]) {
   waveSetDuration(&master_wave, duration);
   int write_percent = num_samples / 100;
   for (long long master_ptr = 0; master_ptr < num_samples; master_ptr++) {
-    if (master_ptr % write_percent == 0) {
-      printf("\rWriting progress: %llu%%", (master_ptr * 100) / num_samples);
-      fflush(stdout);
-    }
     waveAddSample16(&master_wave, master[master_ptr]);
   }
-  printf("\rWriting progress: 99%%");
-  fflush(stdout);
   waveToFile(&master_wave, argv[2]);
   freeWave(&master_wave);
   printf("\rWriting progress: 100%%\n");

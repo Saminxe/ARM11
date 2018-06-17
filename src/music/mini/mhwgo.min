@@ -1,0 +1,188 @@
+MIN
+  INSTRS 6
+  TEMPO 100
+  FPB 4
+INSTRUMENT 0
+  OSCILLATOR 1
+    ATK 32
+    DEC 16
+    SUS 80
+    REL 32
+    SHAPE 3
+    MIX 50
+    OCTAVE 0
+    DETUNE 0
+  OSCILLATOR 2
+    ATK 0
+    DEC 0
+    SUS 0
+    REL 0
+    SHAPE 0
+    MIX 0
+    OCTAVE 0
+    DETUNE 0
+INSTRUMENT 1
+  OSCILLATOR 1
+    ATK 32
+    DEC 16
+    SUS 80
+    REL 32
+    SHAPE 3
+    MIX 50
+    OCTAVE 0
+    DETUNE 0
+  OSCILLATOR 2
+    ATK 0
+    DEC 0
+    SUS 0
+    REL 0
+    SHAPE 0
+    MIX 0
+    OCTAVE 0
+    DETUNE 0
+INSTRUMENT 2
+  OSCILLATOR 1
+    ATK 32
+    DEC 16
+    SUS 80
+    REL 32
+    SHAPE 3
+    MIX 50
+    OCTAVE 0
+    DETUNE 0
+  OSCILLATOR 2
+    ATK 2
+    DEC 200
+    SUS 1
+    REL 1
+    SHAPE 3
+    MIX 50
+    OCTAVE 0
+    DETUNE 0
+INSTRUMENT 3
+  OSCILLATOR 1
+    ATK 32
+    DEC 16
+    SUS 80
+    REL 32
+    SHAPE 3
+    MIX 50
+    OCTAVE 0
+    DETUNE 0
+  OSCILLATOR 2
+    ATK 2
+    DEC 200
+    SUS 1
+    REL 1
+    SHAPE 3
+    MIX 50
+    OCTAVE 0
+    DETUNE 0
+INSTRUMENT 4
+  OSCILLATOR 1
+    ATK 32
+    DEC 16
+    SUS 80
+    REL 32
+    SHAPE 3
+    MIX 50
+    OCTAVE 0
+    DETUNE 0
+  OSCILLATOR 2
+    ATK 2
+    DEC 200
+    SUS 1
+    REL 1
+    SHAPE 3
+    MIX 50
+    OCTAVE 0
+    DETUNE 0
+INSTRUMENT 5
+  OSCILLATOR 1
+    ATK 32
+    DEC 16
+    SUS 80
+    REL 32
+    SHAPE 3
+    MIX 50
+    OCTAVE 0
+    DETUNE 0
+  OSCILLATOR 2
+    ATK 2
+    DEC 200
+    SUS 1
+    REL 1
+    SHAPE 3
+    MIX 50
+    OCTAVE 0
+    DETUNE 0
+NOTES
+    E5 40 0 :: :: :: :: ::
+    :: :: :: :: ::
+    F#5 40 0 :: :: :: :: ::
+    :: :: :: :: ::
+  F#5 40 0 :: :: E4 20 0 :: C#3 40 0 :: ::
+    :: :: :: :: ::
+    G#5 40 0 :: :: B4 20 0 :: G#3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: D#5 20 0 :: C#4 40 0 :: ::
+    :: :: :: :: ::
+    :: :: E5 20 0 :: G#3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: :: C#4 40 0 :: ::
+    :: :: :: :: ::
+    :: :: B4 20 0 :: G#3 40 0 :: ::
+    F#5 40 0 :: :: :: :: ::
+    :: :: E4 20 0 :: C#3 40 0 :: ::
+    G#5 40 0 :: :: :: :: ::
+    F#5 40 0 :: :: :: G#3 40 0 :: ::
+    E5 40 0 :: :: :: :: ::
+  F#5 40 0 :: :: E4 20 0 :: B2 40 0 :: ::
+    :: :: :: :: ::
+    B5 40 0 :: :: B4 20 0 :: F#3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: D#5 20 0 :: B3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: E5 20 0 :: F#3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: :: B3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: B4 20 0 :: F#3 40 0 :: ::
+    C#6 40 0:: :: :: :: ::
+    A5 40 0 :: :: E4 20 0 :: B2 40 0 :: ::
+    :: :: :: :: ::
+    G#5 40 0 :: :: :: F#3 40 0 :: ::
+    :: :: :: :: ::
+  STOP 0 0 :: :: E4 20 0 :: A2 40 0 :: ::
+    :: :: :: :: ::
+    :: :: B4 20 0 :: E3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: D#5 20 0 :: A3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: E5 20 0 :: E3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: :: A3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: B4 20 0 :: E3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: E4 20 0 :: A2 40 0 :: ::
+    :: :: :: :: ::
+    :: :: :: E3 40 0 :: ::
+    :: :: :: :: ::
+  :: :: E4 20 0 :: B2 40 0 :: ::
+    :: :: :: :: ::
+    :: :: B4 20 0 :: F#3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: D#5 20 0 :: B3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: E5 20 0 :: F#3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: :: B3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: B4 20 0 :: F#3 40 0 :: ::
+    :: :: :: :: ::
+    :: :: E4 20 0 :: B2 40 0 :: ::
+    :: :: :: :: ::
+    :: :: :: F#3 40 0 :: ::
+    :: :: :: :: ::
+  STOP 0 0 :: STOP 0 0 :: STOP 0 0 :: STOP 0 0 :: STOP 0 0 :: STOP 0 0
