@@ -1,5 +1,6 @@
 #include "tracker.h"
-#include <curses.h>
+
+/*** Command line version of tracker ***/
 
 /***
 INTRODUCING: The DAMN tracker!!!
@@ -494,33 +495,21 @@ void waveToFile(Wave* wave, const char* filename)
   toLittleEndian(sizeof(int), (void*)&(wave->header.subChunk2Size));
 }
 
-int main(void) {
-  initscr();
-  raw();
-  REDO: clear();
-  keypad(stdscr, TRUE);
-  attron(A_BOLD);
-  printw("DAMN TRACKER ");
-  attroff(A_BOLD);
-  printw("made with blood, sweat and tears\n");
-  printw("Powered by NO-L synthesizer\n");
-  char input_file[80];
-  char output_file[80];
+int main(int argc, char *argv[]) {
+  printf("DAMN TRACKER made with blood, sweat and tears\n");
+  printf("Powered by NO-L synthesizer\n");
 
-  printw("Enter your input file: ");
-  getstr(input_file);
-
-  FILE *inp = fopen(input_file, "rb");
-
-  if (inp == NULL) {
-    printw("File load failure! ");
-    getch();
-    endwin();
+  if (argc != 3) {
+    printf("Usage: %s, input, output\n", argv[0]);
     return EXIT_FAILURE;
   }
 
-  printw("Enter your output file: ");
-  getstr(output_file);
+  FILE *inp = fopen(argv[1], "rb");
+
+  if (inp == NULL) {
+    printf("File load failure! ");
+    return EXIT_FAILURE;
+  }
 
   fseek(inp, 0, SEEK_END);
   long fsize = ftell(inp); // Get the size of the file
@@ -530,52 +519,42 @@ int main(void) {
   fread(damn, 1, 4, inp);
   damn[4] = '\0';
   if (strcmp(damn, "DAMN")) {
-    printw("%s", damn);
-    printw("File is not DAMN format! ");
-    getch();
-    endwin();
+    printf("%s", damn);
+    printf("File is not DAMN format! ");
     return EXIT_FAILURE;
   }
 
   uint32_t instrument_count;
   fread(&instrument_count, 4, 1, inp);
   if (instrument_count == 0) {
-    printw("Invalid amount of instruments!");
-    getch();
-    endwin();
+    printf("Invalid amount of instruments!");
     return EXIT_FAILURE;
   }
 
   uint8_t tempo;
   fread(&tempo, 1, 1, inp);
   if (tempo == 0) {
-    printw("Invalid tempo!");
-    getch();
-    endwin();
+    printf("Invalid tempo!");
     return EXIT_FAILURE;
   }
 
   uint8_t fpb;
   fread(&fpb, 1, 1, inp);
   if (fpb == 0) {
-    printw("Invalid frames per bar!");
-    getch();
-    endwin();
+    printf("Invalid frames per bar!");
     return EXIT_FAILURE;
   }
 
-  printw("\nPlease review project settings: \n");
+  printf("\nPlease review project settings: \n");
 
-  printw("Number of voices: %u\n", instrument_count);
+  printf("Number of voices: %u\n", instrument_count);
   fseek(inp, 6, SEEK_CUR);
-  printw("Tempo = %u, Frames/beat = %u\n", tempo, fpb);
+  printf("Tempo = %u, Frames/beat = %u\n", tempo, fpb);
   int frame_duration = (int) (((double) 1000.0 / ((double) tempo / 60)) / fpb);
   unsigned long long duration = ((fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count)) * frame_duration + 100; // pad by 100ms
   unsigned long long num_samples = (duration * SAMPLE_RATE) / 1000;
-  printw("Total duration = %llums, %llu samples\n", duration, num_samples);
-  printw("\n");
-
-  refresh();
+  printf("Total duration = %llums, %llu samples\n", duration, num_samples);
+  printf("\n");
 
   InstrParams instruments[instrument_count];
   for (int i = 0; i < instrument_count; i++) {
@@ -655,41 +634,36 @@ int main(void) {
         if (sustain_ctrs[i] != 0) sustain_ctrs[i]++;
       }
       if (buffer[i][0] == 0xFF && buffer[i][1] == 0xFF && buffer[i][2] == 0xFF && buffer[i][3] == 0xFF) {
-        printw("END SIGNAL\n");
+        printf("END SIGNAL\n");
         goto END;
       }
     }
     if (frame % synthesis_percent == 0) {
-      printw("\rSynthesis progress: %llu%%", (frame * 100) / frame_max);
-      refresh();
+      printf("\rSynthesis progress: %llu%%", (frame * 100) / frame_max);
+      fflush(stdout);
     }
     frame++;
   }
-  END: printw("\rSynthesis progress: 100%%\n");
+  END: printf("\rSynthesis progress: 100%%\n");
   Wave master_wave = makeWave(SAMPLE_RATE, 1, 16);
   waveSetDuration(&master_wave, duration);
   int write_percent = num_samples / 100;
   for (long long master_ptr = 0; master_ptr < num_samples; master_ptr++) {
     if (master_ptr % write_percent == 0) {
-      printw("\rWriting progress: %llu%%", (master_ptr * 100) / num_samples);
-      refresh();
+      printf("\rWriting progress: %llu%%", (master_ptr * 100) / num_samples);
+      fflush(stdout);
     }
     waveAddSample16(&master_wave, master[master_ptr]);
   }
-  printw("\rWriting progress: 99%%");
-  refresh();
-  waveToFile(&master_wave, output_file);
+  printf("\rWriting progress: 99%%");
+  fflush(stdout);
+  waveToFile(&master_wave, argv[2]);
   freeWave(&master_wave);
-  printw("\rWriting progress: 100%%\n");
-  refresh();
-  printw("Process another file? (Y/N)");
-  char redo = getch();
-  if (redo == 'Y' || redo == 'y') goto REDO;
+  printf("\rWriting progress: 100%%\n");
+  fflush(stdout);
 
   fclose(inp);
   free(master);
-
-  endwin();
 
   return EXIT_SUCCESS;
 }
