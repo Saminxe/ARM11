@@ -17,5 +17,3 @@ cleanall:
 	rm -f *.damn
 	rm -f *.o
 	rm -f MINi
-
-
