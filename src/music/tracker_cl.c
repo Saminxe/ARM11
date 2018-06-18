@@ -602,7 +602,7 @@ int main(int argc, char *argv[]) {
   unsigned long long frame = 0;
   int16_t *master = calloc(num_samples, sizeof(int16_t)); // Initialize the master track
   unsigned long long frame_max = (fsize - (0x10 + 0x30 * instrument_count)) / (4 * instrument_count);
-  int synthesis_percent = frame_max / 100;
+  //int synthesis_percent = frame_max / 100;
 
   // Parsing Loop
   while (frame < frame_max) {
@@ -643,7 +643,7 @@ int main(int argc, char *argv[]) {
   END: printf("\rSynthesis progress: 100%%\n");
   Wave master_wave = makeWave(SAMPLE_RATE, 1, 16);
   waveSetDuration(&master_wave, duration);
-  int write_percent = num_samples / 100;
+  //int write_percent = num_samples / 100;
   for (long long master_ptr = 0; master_ptr < num_samples; master_ptr++) {
     waveAddSample16(&master_wave, master[master_ptr]);
   }
