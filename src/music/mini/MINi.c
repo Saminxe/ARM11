@@ -77,7 +77,8 @@ int get_note_val(char *spn)
    strcpy(_octave, spn + 1);
   }
 
-  octave = strtol(_octave, &ptr, 0);
+  if (_octave != NULL) octave = strtol(_octave, &ptr, 0);
+  else octave = 0;
 
   if (!strcmp(_pitch, "C")) {
    pitch = 0;
@@ -221,7 +222,8 @@ int main(int argc, char const *argv[])
     line++;
     token = strtok(line_buffer, " \n");
     _value = strtok(NULL, " \n");
-    value = strtol(_value, &ptr, 0);
+    if (_value != NULL) value = strtol(_value, &ptr, 0);
+    else value = 0;
     if (!strcmp(token, "TEMPO")) {
       header->tempo = value & 0xFF;
       tempo_found = 1;
@@ -322,7 +324,8 @@ int main(int argc, char const *argv[])
     line++;
     token = strtok(line_buffer, " \n");
     _value = strtok(NULL, " \n");
-    value = strtol(_value, &ptr, 0);
+    if (_value != NULL) value = strtol(_value, &ptr, 0);
+    else value = 0;
   } while (strcmp(token, "NOTES"));
 
   write_instruments(instrs, header->instrument_count, output);
