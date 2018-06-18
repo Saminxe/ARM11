@@ -1,8 +1,8 @@
 #!/bin/bash
 cd src/music/mini
 make
-MINi mhwgo.min mhwgo.damn
+./MINi mhwgo.min mhwgo.damn
 cd ..
 make
-tracker_cl mini/mhwgo.damn mhwgo.wav
+./tracker_cl mini/mhwgo.damn mhwgo.wav
 aplay mhwgo.wav
