@@ -119,6 +119,7 @@ Frame *init_frame(int no_instr)
 void free_frame(Frame *frame)
 {
   free(frame->notes);
+  free(frame);
 }
 
 void write_frame(Frame *frame, int no_instr, FILE *dest)
