@@ -9,7 +9,7 @@ INSTRUMENT 0
     SUS 80
     REL 32
     SHAPE 3
-    MIX 50
+    MIX 100
     OCTAVE 0
     DETUNE 0
   OSCILLATOR 2
@@ -37,7 +37,7 @@ INSTRUMENT 1
     SUS 80
     REL 32
     SHAPE 3
-    MIX 25
+    MIX 50
     OCTAVE 0
     DETUNE -50
 INSTRUMENT 2
@@ -311,7 +311,7 @@ NOTES
     :: :: :: :: ::
     :: :: F#3 40 0 :: :: ::
     :: :: :: :: ::
-    :: :: B3 40 0 :: :: ::
+    :: STOP 0 0 :: B3 40 0 :: :: ::
     :: :: :: :: ::
   :: E5 40 0 :: E3 40 0 :: :: ::
     :: :: :: :: ::

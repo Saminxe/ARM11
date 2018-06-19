@@ -682,12 +682,14 @@ int main(void) {
   freeWave(&master_wave);
   printw("\rWriting progress: 100%%\n");
   refresh();
-  printw("Process another file? (Y/N)");
-  char redo = getch();
-  if (redo == 'Y' || redo == 'y') goto REDO;
 
   fclose(inp);
   free(master);
+
+  printw("Process another file? (Y/N)");
+  char redo[80];
+  getstr(redo);
+  if (redo[0] == 'Y' || redo[0] == 'y') goto REDO;
 
   endwin();
 
